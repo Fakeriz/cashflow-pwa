@@ -27,14 +27,44 @@ export default function Error({
         <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
           Aplikasi mendeteksi kendala sementara saat merender tampilan. Silakan klik tombol di bawah untuk memuat ulang.
         </p>
-        <div className="pt-2">
+        <div className="pt-2 space-y-2">
           <Button
             type="button"
-            onClick={() => reset()}
+            onClick={() => {
+              try {
+                reset();
+              } catch {
+                window.location.reload();
+              }
+            }}
             className="w-full gap-2 font-bold"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Muat Ulang Tampilan</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              try {
+                if (typeof window !== 'undefined') {
+                  // Clear Supabase session tokens if domain switch corrupted the session
+                  for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && (k.startsWith('sb-') || k.includes('auth'))) {
+                      localStorage.removeItem(k);
+                    }
+                  }
+                  window.location.reload();
+                }
+              } catch {
+                window.location.reload();
+              }
+            }}
+            className="w-full text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
+          >
+            Reset Sesi & Muat Ulang
           </Button>
         </div>
       </div>

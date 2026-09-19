@@ -88,7 +88,7 @@ export function calculateWalletStats(
 } {
   let income = 0;
   let spending = 0;
-  let balance = wallet?.initialBalance ?? 0;
+  let balance = (wallet?.balance ?? wallet?.initialBalance) ?? 0;
   const targetWalletName = wallet?.name ?? '';
 
   const safeTransactions = Array.isArray(transactions) ? transactions : [];

@@ -46,6 +46,7 @@ import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { NotificationsModal } from '@/components/NotificationsModal';
 import { MoreMenuModal } from '@/components/MoreMenuModal';
 import { AddWalletModal } from '@/components/AddWalletModal';
+import { AppSkeletonLoader } from '@/components/AppSkeletonLoader';
 import { getStoredWallets, saveStoredWallets } from '@/lib/wallets';
 import { BankAccount } from '@/lib/types';
 
@@ -54,13 +55,38 @@ export default function CashflowApp() {
   // Base currency state (defaults to MYR matching multi-wallet deck)
   const [baseCurrency, setBaseCurrency] = useState<string>(() => getStoredBaseCurrency());
 
-  // Supabase Auth state
+  // Supabase Auth state & loading states
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // User-scoped transactions and recurring bills
-  const [transactions, setTransactions] = useState<Transaction[]>(() => getLocalTransactions());
-  const [recurringBills, setRecurringBills] = useState<RecurringBill[]>(() => getLocalRecurring());
+  // User-scoped transactions, recurring bills, and accounts/wallets
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    try {
+      return getLocalTransactions() || [];
+    } catch {
+      return [];
+    }
+  });
+  const [recurringBills, setRecurringBills] = useState<RecurringBill[]>(() => {
+    try {
+      return getLocalRecurring() || [];
+    } catch {
+      return [];
+    }
+  });
+  const [wallets, setWallets] = useState<BankAccount[]>(() => {
+    try {
+      return getStoredWallets() || [];
+    } catch {
+      return [];
+    }
+  });
+
+  const accounts: BankAccount[] = useMemo(
+    () => (Array.isArray(wallets) && wallets.length > 0 ? wallets : []),
+    [wallets]
+  );
 
   // Supabase connection & sync states
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(true);
@@ -89,7 +115,7 @@ export default function CashflowApp() {
     };
   }, []);
 
-  // Check Supabase Auth session on mount and subscribe to changes
+  // Check Supabase Auth session on mount and subscribe to changes safely
   useEffect(() => {
     let mounted = true;
 
@@ -99,23 +125,38 @@ export default function CashflowApp() {
         if (mounted) {
           setCurrentUser(user);
           setIsAuthLoading(false);
+          setIsLoading(false);
         }
       } catch (e) {
-        if (mounted) setIsAuthLoading(false);
+        console.warn('Auth initialization caught safe fallback:', e);
+        if (mounted) {
+          setCurrentUser(null);
+          setIsAuthLoading(false);
+          setIsLoading(false);
+        }
       }
     }
 
     initAuth();
 
-    const unsubscribe = subscribeToAuthChanges((user) => {
-      if (mounted) {
-        setCurrentUser(user);
-      }
-    });
+    let unsubscribe = () => {};
+    try {
+      unsubscribe = subscribeToAuthChanges((user) => {
+        if (mounted) {
+          setCurrentUser(user);
+        }
+      });
+    } catch (err) {
+      console.warn('Caught subscription setup error:', err);
+    }
 
     return () => {
       mounted = false;
-      unsubscribe();
+      try {
+        unsubscribe();
+      } catch {
+        // Safe cleanup
+      }
     };
   }, []);
 
@@ -125,20 +166,20 @@ export default function CashflowApp() {
     const creds = getSupabaseCredentials();
     if (!creds.isConfigured) return;
 
-    const client = getSupabaseClient();
-    if (!client) return;
-
-    setIsSyncing(true);
     try {
+      const client = getSupabaseClient();
+      if (!client) return;
+
+      setIsSyncing(true);
       if (userId) {
         // Fetch user-scoped transactions
         const remoteTxs = await fetchUserTransactions(userId);
-        if (remoteTxs.length > 0) {
+        if (remoteTxs && remoteTxs.length > 0) {
           setTransactions(remoteTxs);
           saveLocalTransactions(remoteTxs, userId);
         }
         const remoteRec = await fetchUserRecurring(userId);
-        if (remoteRec.length > 0) {
+        if (remoteRec && remoteRec.length > 0) {
           setRecurringBills(remoteRec);
           saveLocalRecurring(remoteRec, userId);
         }
@@ -152,23 +193,23 @@ export default function CashflowApp() {
           .order('date', { ascending: false });
 
         if (!txError && remoteTxs && remoteTxs.length > 0) {
-          const mapped: Transaction[] = remoteTxs.map((r: any) => ({
-            id: r.id,
-            userId: r.user_id,
-            type: r.type,
-            amount: Number(r.amount),
-            description: r.description,
-            category: r.category,
-            account: r.account,
-            date: r.date,
-            notes: r.notes,
-            isRecurring: r.is_recurring,
-            recurringId: r.recurring_id,
-            currency: r.currency || 'IDR',
-            originalAmount: r.original_amount ? Number(r.original_amount) : undefined,
-            exchangeRate: r.exchange_rate ? Number(r.exchange_rate) : undefined,
-            baseCurrency: r.base_currency || 'IDR',
-            createdAt: r.created_at,
+          const mapped: Transaction[] = (remoteTxs || []).map((r: any) => ({
+            id: r?.id,
+            userId: r?.user_id,
+            type: r?.type,
+            amount: Number(r?.amount) || 0,
+            description: r?.description || '',
+            category: r?.category || 'Lainnya',
+            account: r?.account || 'Utama',
+            date: r?.date,
+            notes: r?.notes,
+            isRecurring: r?.is_recurring,
+            recurringId: r?.recurring_id,
+            currency: r?.currency || 'IDR',
+            originalAmount: r?.original_amount ? Number(r.original_amount) : undefined,
+            exchangeRate: r?.exchange_rate ? Number(r.exchange_rate) : undefined,
+            baseCurrency: r?.base_currency || 'IDR',
+            createdAt: r?.created_at,
           }));
           setTransactions(mapped);
           saveLocalTransactions(mapped);
@@ -178,7 +219,7 @@ export default function CashflowApp() {
         }
       }
     } catch (err) {
-      console.warn('Supabase sync error:', err);
+      console.warn('Supabase sync error (non-fatal):', err);
     } finally {
       setIsSyncing(false);
     }
@@ -216,13 +257,21 @@ export default function CashflowApp() {
 
   // Compute Cashflow Summary scaled to currency
   const summary: CashflowSummary = useMemo(() => {
-    // Starting baseline reserve: IDR 45.000.000 or USD 12,500
-    const baseStartingBalance = baseCurrency === 'IDR' ? 45000000 : 12500;
+    // Starting baseline reserve from accounts or default currency reserve
+    const accountsBalance = (accounts || []).reduce(
+      (sum, acc) => sum + (acc?.balance ?? acc?.initialBalance ?? 0),
+      0
+    );
+    const primaryAccountBalance = accounts?.[0]?.balance ?? accounts?.[0]?.initialBalance ?? 0;
+    const baseStartingBalance = accountsBalance > 0
+      ? accountsBalance
+      : (baseCurrency === 'IDR' ? 45000000 : 12500);
+
     let totalInflow = 0;
     let totalOutflow = 0;
 
     const safeTxs = Array.isArray(transactions) ? transactions : [];
-    safeTxs.forEach((tx) => {
+    (safeTxs || []).forEach((tx) => {
       if (!tx) return;
       const amt = typeof tx.amount === 'number' && !isNaN(tx.amount) ? tx.amount : 0;
       if (tx.type === 'inflow') {
@@ -252,7 +301,7 @@ export default function CashflowApp() {
       runwayDays,
       projectedMonthEnd,
     };
-  }, [transactions, baseCurrency]);
+  }, [transactions, baseCurrency, accounts]);
 
   // Handle Save / Edit Transaction (Filtered per user)
   const handleSaveTransaction = async (
@@ -397,6 +446,11 @@ export default function CashflowApp() {
     await signOutUser();
     setCurrentUser(null);
   };
+
+  // Render Skeleton Loader if still determining auth/session state
+  if (isLoading) {
+    return <AppSkeletonLoader />;
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex antialiased transition-colors duration-200">

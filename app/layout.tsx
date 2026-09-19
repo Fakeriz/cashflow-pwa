@@ -12,6 +12,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'Paralar',
   description: 'Aplikasi pelacak keuangan dan arus kas pintar PWA dengan multi-rekening, valas, dan sinkronisasi cloud.',
+  manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

@@ -95,8 +95,14 @@ export const CashflowOverview: React.FC<CashflowOverviewProps> = ({
   }, []);
 
   const safeTransactions = Array.isArray(transactions) ? transactions : [];
-  const safeWallets = Array.isArray(wallets) && wallets.length > 0 ? wallets : DEFAULT_WALLETS;
-  const activeWallet = safeWallets[activeWalletIndex] || safeWallets[0] || DEFAULT_WALLETS[0];
+  const accounts: BankAccount[] = Array.isArray(wallets) && wallets.length > 0 ? wallets : DEFAULT_WALLETS;
+  const safeWallets = accounts;
+  const totalAccountsBalance = (accounts || []).reduce(
+    (acc, a) => acc + (a?.balance ?? a?.initialBalance ?? 0),
+    0
+  );
+  const primaryAccountBalance = accounts?.[0]?.balance ?? accounts?.[0]?.initialBalance ?? 0;
+  const activeWallet = accounts?.[activeWalletIndex] || accounts?.[0] || DEFAULT_WALLETS[0];
 
   const handleToggleHideBalance = () => {
     const next = !hideBalance;

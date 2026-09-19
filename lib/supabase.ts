@@ -192,16 +192,18 @@ export const INITIAL_RECURRING: RecurringBill[] = [
 ];
 
 // Default Public Supabase Credentials
-export const DEFAULT_SUPABASE_URL = 'https://rhgfyzqzcyoprtnyikhx.supabase.co';
-export const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_gggCxqbF1fPHM92bAvDhSg_8fG8rL32';
+export const DEFAULT_SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://rhgfyzqzcyoprtnyikhx.supabase.co';
+export const DEFAULT_SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_gggCxqbF1fPHM92bAvDhSg_8fG8rL32';
 
 // Helper to get active Supabase credentials
 export function getSupabaseCredentials(): { url: string; key: string; isConfigured: boolean; source: 'default' | 'env' } {
   const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const url = (envUrl && envUrl.trim()) ? envUrl.trim() : DEFAULT_SUPABASE_URL;
-  const key = (envKey && envKey.trim()) ? envKey.trim() : DEFAULT_SUPABASE_ANON_KEY;
+  const url = (envUrl && envUrl.trim()) ? envUrl.trim() : (process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://rhgfyzqzcyoprtnyikhx.supabase.co');
+  const key = (envKey && envKey.trim()) ? envKey.trim() : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_gggCxqbF1fPHM92bAvDhSg_8fG8rL32');
 
   return {
     url,
@@ -217,29 +219,53 @@ let supabaseInstance: SupabaseClient | null = null;
 export function getSupabaseClient(): SupabaseClient {
   if (!supabaseInstance) {
     const isBrowser = typeof window !== 'undefined';
-    supabaseInstance = createClient(
-      (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.trim()) || DEFAULT_SUPABASE_URL,
-      (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.trim()) || DEFAULT_SUPABASE_ANON_KEY,
-      {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://rhgfyzqzcyoprtnyikhx.supabase.co';
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_gggCxqbF1fPHM92bAvDhSg_8fG8rL32';
+
+    try {
+      supabaseInstance = createClient(supabaseUrl, supabaseKey, {
         auth: {
           persistSession: isBrowser,
           autoRefreshToken: isBrowser,
           detectSessionInUrl: isBrowser,
         },
+      });
+    } catch (err) {
+      console.warn('Failed to initialize Supabase client with standard options, using safe fallback:', err);
+      try {
+        supabaseInstance = createClient(
+          'https://rhgfyzqzcyoprtnyikhx.supabase.co',
+          'sb_publishable_gggCxqbF1fPHM92bAvDhSg_8fG8rL32',
+          {
+            auth: {
+              persistSession: false,
+              autoRefreshToken: false,
+              detectSessionInUrl: false,
+            },
+          }
+        );
+      } catch (fallbackErr) {
+        console.error('Critical fallback client creation error:', fallbackErr);
       }
-    );
+    }
   }
-  return supabaseInstance;
+  return supabaseInstance!;
 }
 
 export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
   get(_target, prop) {
-    const client = getSupabaseClient();
-    const val = (client as any)[prop];
-    if (typeof val === 'function') {
-      return val.bind(client);
+    try {
+      const client = getSupabaseClient();
+      if (!client) return undefined;
+      const val = (client as any)[prop];
+      if (typeof val === 'function') {
+        return val.bind(client);
+      }
+      return val;
+    } catch (err) {
+      console.warn(`Supabase proxy access error on property "${String(prop)}":`, err);
+      return undefined;
     }
-    return val;
   },
 });
 
@@ -276,7 +302,7 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
 // SUPABASE AUTHENTICATION HELPERS
 // ----------------------------------------------------
 
-function mapSupabaseUserToProfile(user?: SupabaseAuthUser | null): UserProfile {
+function mapSupabaseUserToProfile(user?: any | null): UserProfile {
   if (!user) {
     return {
       id: '',
@@ -284,23 +310,36 @@ function mapSupabaseUserToProfile(user?: SupabaseAuthUser | null): UserProfile {
       fullName: 'User',
     };
   }
+  const email = user?.email || '';
+  const fullName =
+    (user?.user_metadata?.full_name as string) ||
+    (user?.user_metadata?.name as string) ||
+    (email ? email.split('@')?.[0] : '') ||
+    'User';
+
   return {
-    id: user.id || '',
-    email: user.email || '',
-    fullName: (user.user_metadata?.full_name as string) || user.email?.split('@')?.[0] || 'User',
+    id: user?.id || '',
+    email,
+    fullName,
   };
 }
 
 export async function getCurrentUser(): Promise<UserProfile | null> {
   if (typeof window === 'undefined') return null;
-  const client = getSupabaseClient();
-  if (!client) return null;
   try {
-    const { data: { session }, error } = await client.auth.getSession();
-    if (error || !session?.user) return null;
+    const client = getSupabaseClient();
+    if (!client || !client.auth) return null;
+
+    const { data, error } = await client.auth.getSession();
+    if (error) {
+      console.warn('Supabase getSession returned error:', error?.message);
+      return null;
+    }
+    const session = data?.session;
+    if (!session?.user) return null;
     return mapSupabaseUserToProfile(session.user);
   } catch (err) {
-    console.error('Error getting current user:', err);
+    console.warn('Safely caught error in getCurrentUser:', err);
     return null;
   }
 }
@@ -449,20 +488,34 @@ export async function signInWithGoogle(): Promise<{ error: string | null }> {
 
 export function subscribeToAuthChanges(callback: (user: UserProfile | null) => void) {
   if (typeof window === 'undefined') return () => {};
-  const client = getSupabaseClient();
-  if (!client) return () => {};
+  try {
+    const client = getSupabaseClient();
+    if (!client || !client.auth) return () => {};
 
-  const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
-    if (session?.user) {
-      callback(mapSupabaseUserToProfile(session.user));
-    } else {
-      callback(null);
-    }
-  });
+    const { data } = client.auth.onAuthStateChange((_event, session) => {
+      try {
+        if (session?.user) {
+          callback(mapSupabaseUserToProfile(session.user));
+        } else {
+          callback(null);
+        }
+      } catch (err) {
+        console.warn('Error handling auth state change in listener:', err);
+        callback(null);
+      }
+    });
 
-  return () => {
-    subscription.unsubscribe();
-  };
+    return () => {
+      try {
+        data?.subscription?.unsubscribe();
+      } catch {
+        // Safe unsubscribe
+      }
+    };
+  } catch (err) {
+    console.warn('Safely caught error setting up auth listener in subscribeToAuthChanges:', err);
+    return () => {};
+  }
 }
 
 // ----------------------------------------------------

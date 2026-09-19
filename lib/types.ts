@@ -40,11 +40,14 @@ export interface BankAccount {
   type: 'bank' | 'ewallet' | 'cash' | 'card';
   categoryTag?: string; // e.g. 'BELANJE', 'UTAMA', 'TABUNGAN'
   initialBalance: number;
+  balance?: number; // optional alias for initialBalance or computed balance
   currency: string;
   colorTheme?: 'dark' | 'navy' | 'emerald' | 'purple' | 'slate' | 'amber';
   accountNumber?: string;
   isDefault?: boolean;
 }
+
+export type AccountItem = BankAccount;
 
 export type RecurrenceFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
 

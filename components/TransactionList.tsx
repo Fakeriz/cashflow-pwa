@@ -265,8 +265,12 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       ) : (
         <div className="space-y-4">
           {Object.entries(grouped).map(([dateStr, items]) => {
-            const dateTotal = items.reduce(
-              (acc, item) => (item.type === 'inflow' ? acc + item.amount : acc - item.amount),
+            const safeItems = Array.isArray(items) ? items : [];
+            const dateTotal = (safeItems || []).reduce(
+              (acc, item) => {
+                const amt = typeof item?.amount === 'number' && !isNaN(item.amount) ? item.amount : 0;
+                return item?.type === 'inflow' ? acc + amt : acc - amt;
+              },
               0
             );
 
@@ -277,7 +281,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   <div className="flex items-center gap-1.5 font-semibold text-zinc-800 dark:text-zinc-200">
                     <Calendar className="w-3.5 h-3.5 text-zinc-400" />
                     <span>{formatDateLabel(dateStr)}</span>
-                    <span className="text-zinc-400 font-normal">({items.length})</span>
+                    <span className="text-zinc-400 font-normal">({safeItems.length})</span>
                   </div>
                   <span
                     className={`font-semibold ${
@@ -292,7 +296,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
                 {/* Items in this date group */}
                 <div className="space-y-2">
-                  {items.map((tx, idx) => {
+                  {(safeItems || []).map((tx, idx) => {
                     const isInflow = tx?.type === 'inflow';
                     const isForeign = tx?.currency && tx.currency !== baseCurrency;
                     const txId = tx?.id || `tx-item-${idx}`;
