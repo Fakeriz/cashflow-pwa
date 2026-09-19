@@ -4,10 +4,8 @@ import React, { useState } from 'react';
 import { 
   User, 
   LogOut, 
-  ShieldCheck, 
   Bell,
-  CheckCircle2,
-  ChevronDown
+  CheckCircle2
 } from 'lucide-react';
 import { UserProfile } from '@/lib/types';
 
@@ -34,14 +32,21 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-  const rawName = currentUser?.fullName || (currentUser?.email ? currentUser.email.split('@')[0] : 'Hafizh');
-  const safeName = typeof rawName === 'string' && rawName.trim().length > 0 ? rawName.trim() : 'Hafizh';
+  // Ambil nama depan secara aman dengan optional chaining
+  const rawFullName = 
+    (currentUser as any)?.user_metadata?.full_name || 
+    currentUser?.fullName || 
+    (currentUser?.email ? currentUser.email.split('@')[0] : '');
+  
+  const firstName = currentUser 
+    ? (typeof rawFullName === 'string' && rawFullName.trim().length > 0 
+        ? rawFullName.trim().split(' ')[0] 
+        : 'User')
+    : 'User';
 
-  const initialLetter = currentUser?.fullName?.trim() 
-    ? currentUser.fullName.trim().charAt(0).toUpperCase() 
-    : currentUser?.email 
-      ? currentUser.email.charAt(0).toUpperCase() 
-      : 'H';
+  const avatarUrl = (currentUser as any)?.user_metadata?.avatar_url || currentUser?.avatarUrl;
+
+  const initialLetter = firstName.charAt(0).toUpperCase() || 'U';
 
   const handleAvatarClick = () => {
     if (currentUser) {
@@ -55,19 +60,26 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border-b border-zinc-200/90 dark:border-zinc-800/90 px-4 py-2.5 sm:px-6 transition-colors">
       <div className="w-full max-w-7xl mx-auto flex items-center justify-between">
         {/* ============================================================ */}
-        {/* LEFT SIDE: Interactive Profile Avatar + Proportional Greeting */}
+        {/* SISI KIRI: Avatar Profil + Salam "Hi, [Nama]" (Satu Baris)   */}
         {/* ============================================================ */}
         <div className="relative flex items-center gap-2.5 sm:gap-3">
-          {/* Interactive Profile Avatar */}
+          {/* Avatar Profil Interaktif */}
           <button
             id="header-user-avatar-btn"
             type="button"
             onClick={handleAvatarClick}
             className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-800 dark:text-zinc-200 transition hover:ring-2 hover:ring-zinc-400/40 dark:hover:ring-zinc-600/50 active:scale-95 shadow-2xs shrink-0 cursor-pointer overflow-hidden"
-            title={currentUser ? `Menu akun: ${safeName}` : 'Masuk ke akun Paralar'}
-            aria-label={currentUser ? `Profil ${safeName}` : 'Masuk ke akun'}
+            title={currentUser ? `Menu akun: ${firstName}` : 'Masuk ke akun'}
+            aria-label={currentUser ? `Profil ${firstName}` : 'Masuk ke akun'}
           >
-            {currentUser ? (
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={firstName}
+                className="w-full h-full object-cover rounded-full"
+                referrerPolicy="no-referrer"
+              />
+            ) : currentUser ? (
               <span className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-white select-none">
                 {initialLetter}
               </span>
@@ -75,7 +87,7 @@ export const Header: React.FC<HeaderProps> = ({
               <User className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-600 dark:text-zinc-400" />
             )}
 
-            {/* Status indicator dot if connected */}
+            {/* Status indicator dot saat terhubung */}
             {currentUser && (
               <span 
                 className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-zinc-950 ${
@@ -86,27 +98,19 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* Proportional Greeting Text ("Hi," small, name medium/bold) */}
-          <div className="flex flex-col justify-center min-w-0 select-none">
-            <span className="text-[11px] sm:text-xs text-zinc-500 dark:text-zinc-400 font-normal leading-tight">
-              Hi,
+          {/* Teks Salam Satu Baris ("Hi, User" atau "Hi, [Nama]") */}
+          <div className="flex items-center min-w-0 select-none">
+            <span className="text-sm sm:text-base font-semibold text-zinc-950 dark:text-white leading-tight truncate max-w-[160px] sm:max-w-[260px]">
+              Hi, {firstName}
             </span>
-            <div className="flex items-center gap-1">
-              <span className="text-sm sm:text-base font-semibold text-zinc-950 dark:text-white leading-tight truncate max-w-[130px] sm:max-w-[220px]">
-                {safeName}
-              </span>
-              {currentUser && (
-                <ChevronDown className="w-3 h-3 text-zinc-400 dark:text-zinc-500 hidden xs:inline shrink-0" />
-              )}
-            </div>
           </div>
 
           {/* ============================================================ */}
-          {/* USER ACCOUNT DROPDOWN (Shown when logged in and avatar clicked) */}
+          {/* DIALOG RINGKAS AKUN (Hanya saat sudah login & avatar diklik)  */}
           {/* ============================================================ */}
           {currentUser && showUserMenu && (
             <>
-              {/* Overlay Backdrop to close menu */}
+              {/* Overlay Backdrop penutup menu */}
               <div
                 className="fixed inset-0 z-40"
                 onClick={() => setShowUserMenu(false)}
@@ -114,38 +118,31 @@ export const Header: React.FC<HeaderProps> = ({
               />
 
               <div className="absolute top-12 left-0 mt-1 w-64 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 shadow-xl z-50 text-xs space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
-                {/* User Info Header */}
-                <div className="px-2 py-1.5 border-b border-zinc-100 dark:border-zinc-800">
-                  <p className="font-bold text-zinc-950 dark:text-white truncate text-sm">
-                    {safeName}
-                  </p>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-                    {currentUser?.email || 'Akun Cloud'}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-2 text-[10px] text-zinc-600 dark:text-zinc-400">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                    <span>{isSupabaseConnected ? 'Akun aktif & tersinkronisasi' : 'Tersimpan di perangkat'}</span>
+                {/* Info Akun Pengguna */}
+                <div className="px-2 py-1.5 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 flex items-center justify-center text-zinc-800 dark:text-zinc-200 shrink-0 overflow-hidden font-bold">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt={firstName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <span>{initialLetter}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-zinc-950 dark:text-white truncate text-sm">
+                      {(currentUser as any)?.user_metadata?.full_name || currentUser?.fullName || firstName}
+                    </p>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                      {currentUser?.email || 'Pengguna'}
+                    </p>
                   </div>
                 </div>
 
-                {/* Manage Profile Button */}
-                <button
-                  id="header-menu-manage-profile-btn"
-                  type="button"
-                  onClick={() => {
-                    setShowUserMenu(false);
-                    onOpenAuthModal();
-                  }}
-                  className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 font-medium transition flex items-center justify-between cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
-                    <span>Kelola Profil Akun</span>
-                  </div>
-                  <span className="text-[10px] text-zinc-400">→</span>
-                </button>
+                <div className="px-2 py-1 text-[11px] text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span className="truncate">Sesi Akun Aktif</span>
+                </div>
 
-                {/* Logout Button */}
+                {/* Tombol Keluar (Logout) */}
                 <div className="pt-1 border-t border-zinc-100 dark:border-zinc-800">
                   <button
                     id="header-menu-logout-btn"
@@ -154,9 +151,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowUserMenu(false);
                       onLogout();
                     }}
-                    className="w-full px-2.5 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold transition flex items-center gap-2 text-left cursor-pointer"
+                    className="w-full px-2.5 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 font-semibold transition flex items-center gap-2 text-left cursor-pointer"
                   >
-                    <LogOut className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
+                    <LogOut className="w-3.5 h-3.5" />
                     <span>Keluar (Logout)</span>
                   </button>
                 </div>
@@ -166,7 +163,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* ============================================================ */}
-        {/* RIGHT SIDE: ONLY Notification Bell                           */}
+        {/* SISI KANAN: HANYA Ikon Notifikasi (Lonceng)                   */}
         {/* ============================================================ */}
         <div className="flex items-center">
           <button
