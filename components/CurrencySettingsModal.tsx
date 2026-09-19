@@ -75,7 +75,7 @@ export const CurrencySettingsModal: React.FC<CurrencySettingsModalProps> = ({
               <Globe2 className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-zinc-950 dark:text-white">Multi-Currency & Valas</h3>
+              <h3 className="text-lg font-bold text-zinc-950 dark:text-white">Multi-Currency & Valas</h3>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 Pengaturan mata uang utama & konversi kurs luar negeri
               </p>
@@ -245,7 +245,7 @@ export const CurrencySettingsModal: React.FC<CurrencySettingsModalProps> = ({
 
         {/* Footer */}
         <div className="flex justify-end pt-1">
-          <Button onClick={onClose} className="w-full h-11 text-xs font-bold">
+          <Button onClick={onClose} className="w-full h-11 text-sm font-medium">
             Selesai
           </Button>
         </div>

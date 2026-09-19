@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useSyncExternalStore, useCallback } from 'react';
 
 export type Theme = 'dark' | 'light';
 
@@ -28,32 +28,25 @@ export function applyThemeToDOM(theme: Theme) {
   }
 }
 
+function subscribeTheme(callback: () => void) {
+  window.addEventListener('cashflowThemeChanged', callback);
+  window.addEventListener('storage', callback);
+  return () => {
+    window.removeEventListener('cashflowThemeChanged', callback);
+    window.removeEventListener('storage', callback);
+  };
+}
+
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>(() => getStoredTheme());
-
-  useEffect(() => {
-    // Apply current theme on mount
-    applyThemeToDOM(theme);
-
-    const handleThemeChange = () => {
-      const current = getStoredTheme();
-      setThemeState(current);
-      applyThemeToDOM(current);
-    };
-
-    window.addEventListener('cashflowThemeChanged', handleThemeChange);
-    window.addEventListener('storage', handleThemeChange);
-
-    return () => {
-      window.removeEventListener('cashflowThemeChanged', handleThemeChange);
-      window.removeEventListener('storage', handleThemeChange);
-    };
-  }, [theme]);
+  const theme = useSyncExternalStore(
+    subscribeTheme,
+    getStoredTheme,
+    () => 'dark'
+  );
 
   const setTheme = useCallback((newTheme: Theme) => {
     try {
       localStorage.setItem(THEME_STORAGE_KEY, newTheme);
-      setThemeState(newTheme);
       applyThemeToDOM(newTheme);
       window.dispatchEvent(new Event('cashflowThemeChanged'));
     } catch (e) {

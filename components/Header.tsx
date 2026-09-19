@@ -8,11 +8,12 @@ import {
   Moon, 
   User, 
   LogOut, 
-  ChevronDown,
-  ShieldCheck,
-  Calendar,
-  Sparkles,
-  Plus
+  ChevronDown, 
+  ShieldCheck, 
+  Calendar, 
+  Sparkles, 
+  Plus, 
+  Bell 
 } from 'lucide-react';
 import { UserProfile } from '@/lib/types';
 import { SUPPORTED_CURRENCIES } from '@/lib/currency';
@@ -31,6 +32,7 @@ interface HeaderProps {
   baseCurrency?: string;
   onOpenCurrencyModal?: () => void;
   activeTab?: string;
+  onOpenNotifications?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -44,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
   baseCurrency = 'IDR',
   onOpenCurrencyModal,
   activeTab = 'overview',
+  onOpenNotifications,
 }) => {
   const { isDark, toggleTheme } = useTheme();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -78,25 +81,27 @@ export const Header: React.FC<HeaderProps> = ({
     year: 'numeric',
   });
 
+  const userName = currentUser?.fullName || 'Hafizh';
+
   return (
     <header className="sticky top-0 z-40 w-full bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800/80 px-4 py-3 sm:px-6 transition-colors">
       <div className="w-full max-w-7xl mx-auto flex items-center justify-between gap-3">
         {/* ============================================================ */}
-        {/* MOBILE BRAND (Hidden on desktop because Desktop has Sidebar) */}
+        {/* MOBILE GREETING (Matching screenshot: Avatar + "Hi, Hafizh") */}
         {/* ============================================================ */}
         <div className="flex md:hidden items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 flex items-center justify-center shadow-xs">
-            <TrendingUp className="w-4 h-4 stroke-[2.5]" />
-          </div>
+          <button
+            type="button"
+            onClick={onOpenAuthModal}
+            className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-200 border border-zinc-300/60 dark:border-zinc-700/60 transition active:scale-95 shadow-2xs"
+            title="Profil Pengguna"
+          >
+            <User className="w-5 h-5" />
+          </button>
           <div>
-            <div className="flex items-center gap-1.5">
-              <h1 className="text-sm font-bold tracking-tight text-zinc-950 dark:text-white leading-tight">
-                Cashflow
-              </h1>
-              <span className="text-[9px] font-bold uppercase tracking-wider px-1 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
-                PWA
-              </span>
-            </div>
+            <h1 className="text-base font-extrabold text-zinc-950 dark:text-white tracking-tight leading-tight">
+              Hi, {userName}
+            </h1>
           </div>
         </div>
 
@@ -110,9 +115,9 @@ export const Header: React.FC<HeaderProps> = ({
                 {currentTabInfo.title}
               </h1>
               <span className="text-xs text-zinc-400 dark:text-zinc-600 font-medium">|</span>
-              <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium flex items-center gap-1">
+              <span suppressHydrationWarning className="text-xs text-zinc-500 dark:text-zinc-400 font-medium flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-zinc-400" />
-                <span>{todayFormatted}</span>
+                <span suppressHydrationWarning>{todayFormatted || 'Today'}</span>
               </span>
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -125,6 +130,19 @@ export const Header: React.FC<HeaderProps> = ({
         {/* ACTION ITEMS (Shared between Mobile & Desktop)              */}
         {/* ============================================================ */}
         <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Notification Bell Button (Round button matching screenshot) */}
+          <button
+            id="header-notification-bell-btn"
+            type="button"
+            onClick={onOpenNotifications}
+            className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition shadow-2xs relative"
+            title="Notifikasi & Pemberitahuan"
+            aria-label="Notifikasi"
+          >
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-amber-500" />
+          </button>
+
           {/* Light / Dark Mode Toggle */}
           <button
             id="theme-toggle-btn"

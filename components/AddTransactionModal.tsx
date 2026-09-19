@@ -18,6 +18,7 @@ import {
   formatCurrency, 
   refreshLiveExchangeRates 
 } from '@/lib/currency';
+import { getStoredWallets } from '@/lib/wallets';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 
@@ -102,11 +103,18 @@ const TransactionFormContent: React.FC<FormContentProps> = ({
   const [customRate, setCustomRate] = useState<string>('');
   const [isRefreshingRate, setIsRefreshingRate] = useState<boolean>(false);
 
+  const dynamicWallets = getStoredWallets();
+  const dynamicAccountNames = Array.from(
+    new Set([...dynamicWallets.map((w) => w.name), ...ACCOUNTS])
+  );
+
   const [description, setDescription] = useState<string>(editingTransaction?.description ?? '');
   const [category, setCategory] = useState<Category>(
     editingTransaction?.category ?? (editingTransaction?.type === 'inflow' ? 'Bisnis & Klien' : 'Makanan')
   );
-  const [account, setAccount] = useState<Account>(editingTransaction?.account ?? 'Checking Account');
+  const [account, setAccount] = useState<Account>(
+    editingTransaction?.account ?? dynamicAccountNames[0] ?? 'TnG'
+  );
   const [date, setDate] = useState<string>(editingTransaction?.date ?? getTodayDateString);
   const [isRecurring, setIsRecurring] = useState<boolean>(!!editingTransaction?.isRecurring);
 
@@ -346,7 +354,7 @@ const TransactionFormContent: React.FC<FormContentProps> = ({
 
       {/* Description */}
       <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Deskripsi Transaksi</label>
+        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Deskripsi Transaksi</label>
         <Input
           id="modal-tx-desc-input"
           required
@@ -357,15 +365,15 @@ const TransactionFormContent: React.FC<FormContentProps> = ({
               ? 'Contoh: Gaji Bulanan, Pembayaran Proyek Klien' 
               : 'Contoh: Makan Siang Nasi Padang, Bensin Pertamax, Tagihan Listrik'
           }
-          className="text-xs"
+          className="h-11 text-sm"
         />
       </div>
 
       {/* Category Selector with Indonesian Categories */}
       <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center justify-between">
+        <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300 flex items-center justify-between">
           <span>Kategori Pengeluaran / Pemasukan</span>
-          <span className="text-[11px] text-zinc-900 dark:text-zinc-100 font-bold">{category}</span>
+          <span className="text-xs text-zinc-900 dark:text-zinc-100 font-bold">{category}</span>
         </label>
         <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
           {filteredCategories.map((c) => {
@@ -392,13 +400,13 @@ const TransactionFormContent: React.FC<FormContentProps> = ({
       {/* Account & Date */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Akun / Rekening</label>
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Akun / Rekening</label>
           <select
             value={account}
             onChange={(e) => setAccount(e.target.value as Account)}
-            className="flex h-11 w-full rounded-xl border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3.5 py-2 text-xs text-zinc-900 dark:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-300"
+            className="flex h-11 w-full rounded-xl border border-zinc-300 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900 dark:focus-visible:ring-zinc-300"
           >
-            {ACCOUNTS.map((acc) => (
+            {dynamicAccountNames.map((acc) => (
               <option key={acc} value={acc}>
                 {acc}
               </option>
@@ -407,24 +415,24 @@ const TransactionFormContent: React.FC<FormContentProps> = ({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Tanggal</label>
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Tanggal</label>
           <Input
             type="date"
             required
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="text-xs"
+            className="h-11 text-sm"
           />
         </div>
       </div>
 
       {/* Recurring Option */}
-      <div className="flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
+        <div className="flex items-center gap-2.5">
           <Repeat className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
           <div>
-            <span className="text-xs font-semibold text-zinc-900 dark:text-white block">Cashflow Berulang (Rutin)</span>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400">Tercatat berkala otomatis</span>
+            <span className="text-sm font-medium text-zinc-900 dark:text-white block">Cashflow Berulang (Rutin)</span>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">Tercatat berkala otomatis</span>
           </div>
         </div>
         <input
@@ -441,14 +449,14 @@ const TransactionFormContent: React.FC<FormContentProps> = ({
           type="button"
           variant="outline"
           onClick={onClose}
-          className="flex-1 h-11 text-xs"
+          className="flex-1 h-11 text-sm font-medium"
         >
           Batal
         </Button>
         <Button
           id="save-tx-btn"
           type="submit"
-          className="flex-1 h-11 text-xs font-bold"
+          className="flex-1 h-11 text-sm font-medium"
         >
           {editingTransaction ? 'Simpan Perubahan' : 'Catat Transaksi'}
         </Button>
@@ -474,7 +482,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         {/* Header bar */}
         <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
           <div className="flex items-center gap-2">
-            <h3 className="text-base font-bold text-zinc-950 dark:text-white">
+            <h3 className="text-lg font-bold text-zinc-950 dark:text-white">
               {editingTransaction ? 'Edit Transaksi Cashflow' : 'Catat Transaksi Baru'}
             </h3>
           </div>

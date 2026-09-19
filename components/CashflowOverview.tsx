@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowDownRight, 
   ArrowUpRight, 
@@ -12,15 +12,32 @@ import {
   TrendingUp, 
   Globe2, 
   Calendar,
-  Sparkles
+  Sparkles,
+  BarChart3,
+  Layers
 } from 'lucide-react';
-import { Transaction, CashflowSummary, Account } from '@/lib/types';
+import { Transaction, CashflowSummary, Account, BankAccount } from '@/lib/types';
 import { formatCurrency, SUPPORTED_CURRENCIES } from '@/lib/currency';
+import { 
+  DEFAULT_WALLETS,
+  getStoredWallets, 
+  saveStoredWallets, 
+  getStoredHideBalance, 
+  setStoredHideBalance,
+  calculateWalletStats 
+} from '@/lib/wallets';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
+import { WalletCardDeck } from './WalletCardDeck';
+import { QuickActionGrid } from './QuickActionGrid';
+import { AccountRecentTransactions } from './AccountRecentTransactions';
+import { AddWalletModal } from './AddWalletModal';
+import { MoveFundsModal } from './MoveFundsModal';
+import { BillSplitModal } from './BillSplitModal';
+import { ReceiptsModal } from './ReceiptsModal';
+import { PulseModal } from './PulseModal';
 import { MonthlyCashflowChart } from './MonthlyCashflowChart';
 import { CategoryBreakdownCard } from './CategoryBreakdownCard';
-import { RecentTransactionsCard } from './RecentTransactionsCard';
 
 interface CashflowOverviewProps {
   summary: CashflowSummary;
@@ -31,6 +48,7 @@ interface CashflowOverviewProps {
   onOpenCurrencySettings?: () => void;
   onEditTransaction?: (tx: Transaction) => void;
   onDeleteTransaction?: (id: string) => void;
+  onAddTransactionDirect?: (tx: Omit<Transaction, 'id' | 'createdAt'>) => void;
 }
 
 export const CashflowOverview: React.FC<CashflowOverviewProps> = ({
@@ -38,323 +56,252 @@ export const CashflowOverview: React.FC<CashflowOverviewProps> = ({
   transactions,
   onOpenAddModal,
   onNavigateTab,
-  baseCurrency = 'IDR',
+  baseCurrency = 'MYR',
   onOpenCurrencySettings,
   onEditTransaction,
   onDeleteTransaction,
+  onAddTransactionDirect,
 }) => {
-  const isIDR = baseCurrency === 'IDR';
+  // Wallet Accounts state
+  const [wallets, setWallets] = useState<BankAccount[]>(() => getStoredWallets());
+  const [activeWalletIndex, setActiveWalletIndex] = useState<number>(0);
+  const [hideBalance, setHideBalance] = useState<boolean>(() => getStoredHideBalance());
 
-  // Realistic baseline balances based on currency
-  const baseMultipler = isIDR ? 10000 : 1;
-  const initialBalances: Record<Account, number> = {
-    'Operating Account': 4500 * baseMultipler,
-    'Checking Account': 2250 * baseMultipler,
-    'Savings / Reserve': 6000 * baseMultipler,
-    'Credit Card': -850 * baseMultipler,
-    'Cash / Petty': 350 * baseMultipler,
+  // Modals state
+  const [isAddWalletModalOpen, setIsAddWalletModalOpen] = useState(false);
+  const [editingWallet, setEditingWallet] = useState<BankAccount | null>(null);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+  const [isBillSplitModalOpen, setIsBillSplitModalOpen] = useState(false);
+  const [isReceiptsModalOpen, setIsReceiptsModalOpen] = useState(false);
+  const [isPulseModalOpen, setIsPulseModalOpen] = useState(false);
+  const [pulseTargetWallet, setPulseTargetWallet] = useState<BankAccount | null>(null);
+  const [showAnalyticsSection, setShowAnalyticsSection] = useState(false);
+
+  // Sync wallets from localStorage updates
+  useEffect(() => {
+    const handleWalletsUpdated = () => {
+      setWallets(getStoredWallets());
+    };
+    const handleHideBalanceToggled = () => {
+      setHideBalance(getStoredHideBalance());
+    };
+
+    window.addEventListener('walletsUpdated', handleWalletsUpdated);
+    window.addEventListener('hideBalanceToggled', handleHideBalanceToggled);
+    return () => {
+      window.removeEventListener('walletsUpdated', handleWalletsUpdated);
+      window.removeEventListener('hideBalanceToggled', handleHideBalanceToggled);
+    };
+  }, []);
+
+  const activeWallet = wallets[activeWalletIndex] || wallets[0];
+
+  const handleToggleHideBalance = () => {
+    const next = !hideBalance;
+    setHideBalance(next);
+    setStoredHideBalance(next);
   };
 
-  const accountBalances: Record<Account, number> = { ...initialBalances };
+  const handleSaveWallet = (newOrUpdated: BankAccount) => {
+    let updatedList: BankAccount[];
+    const existingIndex = wallets.findIndex((w) => w.id === newOrUpdated.id);
 
-  // Adjust account balances based on active transactions
-  transactions.forEach((tx) => {
-    if (accountBalances[tx.account] !== undefined) {
-      if (tx.type === 'inflow') {
-        accountBalances[tx.account] += tx.amount * 0.2;
-      } else {
-        accountBalances[tx.account] -= tx.amount * 0.2;
-      }
+    if (existingIndex >= 0) {
+      updatedList = [...wallets];
+      updatedList[existingIndex] = newOrUpdated;
+    } else {
+      updatedList = [...wallets, newOrUpdated];
+      // Switch active to the newly created wallet
+      setActiveWalletIndex(updatedList.length - 1);
     }
-  });
 
-  const isNetPositive = summary.netCashflow >= 0;
-  const currencyInfo = SUPPORTED_CURRENCIES[baseCurrency] || SUPPORTED_CURRENCIES.IDR;
+    setWallets(updatedList);
+    saveStoredWallets(updatedList);
+    setEditingWallet(null);
+  };
 
-  // Primary Balance Element reusable for both Mobile and Desktop
-  const balanceSummaryNode = (
-    <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 sm:p-7 shadow-sm">
-      <div className="relative z-10 flex flex-col space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-              <Wallet className="w-4 h-4" />
-            </span>
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              Total Saldo Kas Likuid
-            </span>
-          </div>
+  const handleDeleteWallet = (walletId: string) => {
+    const updated = wallets.filter((w) => w.id !== walletId);
+    if (updated.length === 0) return;
+    setWallets(updated);
+    saveStoredWallets(updated);
+    setActiveWalletIndex(0);
+  };
 
-          <div className="flex items-center gap-2">
-            {onOpenCurrencySettings && (
-              <button
-                type="button"
-                onClick={onOpenCurrencySettings}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 transition"
-                title="Ganti Mata Uang Dasar"
-              >
-                <Globe2 className="w-3 h-3 text-zinc-600 dark:text-zinc-400" />
-                <span>{currencyInfo.flag} {currencyInfo.code}</span>
-              </button>
-            )}
+  const handleTransfer = (data: {
+    fromAccount: string;
+    toAccount: string;
+    amount: number;
+    description: string;
+    notes: string;
+    date: string;
+    time: string;
+    currency: string;
+  }) => {
+    if (onAddTransactionDirect) {
+      // Record transfer transaction
+      onAddTransactionDirect({
+        type: 'outflow',
+        amount: data.amount,
+        description: data.description,
+        notes: data.notes,
+        category: 'Lainnya',
+        account: data.fromAccount,
+        transferToAccount: data.toAccount,
+        date: data.date,
+        time: data.time,
+        currency: data.currency,
+      });
+    }
+  };
 
-            <span
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                isNetPositive
-                  ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700'
-              }`}
-            >
-              {isNetPositive ? (
-                <>
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span>Net +{formatCurrency(summary.netCashflow, baseCurrency)}</span>
-                </>
-              ) : (
-                <>
-                  <TrendingDown className="w-3.5 h-3.5" />
-                  <span>Net {formatCurrency(summary.netCashflow, baseCurrency, { includeSign: true })}</span>
-                </>
-              )}
-            </span>
-          </div>
-        </div>
+  const handleOpenPulse = (wallet: BankAccount) => {
+    setPulseTargetWallet(wallet);
+    setIsPulseModalOpen(true);
+  };
 
-        <div>
-          <div className="text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-950 dark:text-white">
-            {formatCurrency(summary.currentBalance, baseCurrency)}
-          </div>
-          <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-            <span>Proyeksi Akhir Bulan:</span>
-            <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-              {formatCurrency(summary.projectedMonthEnd, baseCurrency)}
-            </span>
-          </div>
-        </div>
-
-        {/* Quick Metrics Split (Monochrome) */}
-        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
-          {/* Monthly Inflows */}
-          <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800">
-            <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-medium mb-1">
-              <div className="w-5 h-5 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 flex items-center justify-center">
-                <ArrowUpRight className="w-3 h-3 stroke-[2.5]" />
-              </div>
-              <span>Total Pemasukan</span>
-            </div>
-            <div className="text-base sm:text-lg font-bold text-zinc-950 dark:text-white">
-              +{formatCurrency(summary.totalInflow, baseCurrency)}
-            </div>
-          </div>
-
-          {/* Monthly Outflows */}
-          <div className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200 dark:border-zinc-800">
-            <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-medium mb-1">
-              <div className="w-5 h-5 rounded-full bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 flex items-center justify-center">
-                <ArrowDownRight className="w-3 h-3 stroke-[2.5]" />
-              </div>
-              <span>Total Pengeluaran</span>
-            </div>
-            <div className="text-base sm:text-lg font-bold text-zinc-700 dark:text-zinc-300">
-              -{formatCurrency(summary.totalOutflow, baseCurrency)}
-            </div>
-          </div>
-        </div>
-
-        {/* Action Button Bar */}
-        <div className="flex items-center gap-2 pt-1">
-          <Button
-            id="overview-add-cashflow-btn"
-            onClick={onOpenAddModal}
-            className="flex-1 h-11 text-xs font-bold shadow-xs"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Tambah Transaksi</span>
-          </Button>
-          <Button
-            id="overview-forecast-shortcut-btn"
-            variant="outline"
-            onClick={() => onNavigateTab('forecast')}
-            className="h-11 px-4 text-xs font-semibold"
-          >
-            <Calendar className="w-3.5 h-3.5 text-zinc-500 mr-1.5" />
-            <span>Forecast 30 Hari</span>
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // Runway Card Reusable
-  const runwayHealthNode = (
-    <Card>
-      <CardContent className="p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-800 dark:text-zinc-200">
-              <Hourglass className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-zinc-950 dark:text-white">Cash Runway & Kecepatan Kas</h4>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Ketahanan saldo terhadap pengeluaran harian</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-base font-bold text-zinc-950 dark:text-white">
-              {summary.runwayDays > 365 ? '12+ Bulan' : `${summary.runwayDays} Hari`}
-            </div>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Estimasi Runway</span>
-          </div>
-        </div>
-
-        {/* Runway Progress Meter */}
-        <div className="space-y-1.5">
-          <div className="w-full h-2.5 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
-            <div
-              className="h-full bg-zinc-900 dark:bg-zinc-100 transition-all duration-500"
-              style={{
-                width: `${Math.min(100, Math.max(10, (summary.runwayDays / 180) * 100))}%`,
-              }}
-            />
-          </div>
-          <div className="flex justify-between text-[11px] text-zinc-500 dark:text-zinc-400">
-            <span>
-              Burn Rate Harian: {formatCurrency(Math.round(summary.burnRateDaily), baseCurrency)}/hari
-            </span>
-            <span className="font-semibold text-zinc-800 dark:text-zinc-200">Likuiditas Stabil</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  // Accounts Liquidity Card Reusable
-  const accountsNode = (
-    <div className="space-y-2.5">
-      <div className="flex items-center justify-between px-1">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-          Alokasi Rekening & Dompet
-        </h4>
-        <button
-          type="button"
-          onClick={() => onNavigateTab('transactions')}
-          className="text-xs text-zinc-700 dark:text-zinc-300 hover:underline font-semibold"
-        >
-          Lihat riwayat →
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        {(Object.keys(accountBalances) as Account[]).map((acc) => {
-          const bal = accountBalances[acc];
-          const isNegative = bal < 0;
-          return (
-            <div
-              key={acc}
-              className="flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300">
-                  <CreditCard className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 block">{acc}</span>
-                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                    {acc.includes('Credit') ? 'Kewajiban / Liabilitas' : 'Aset Kas'}
-                  </span>
-                </div>
-              </div>
-              <span
-                className={`text-sm font-bold ${
-                  isNegative ? 'text-zinc-500 dark:text-zinc-400 line-through' : 'text-zinc-950 dark:text-white'
-                }`}
-              >
-                {formatCurrency(bal, baseCurrency)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+  const currSymbol = (activeWallet?.currency || baseCurrency) === 'MYR' ? 'RM' : 'Rp';
 
   return (
-    <div className="animate-in fade-in duration-300 w-full">
+    <div className="animate-in fade-in duration-300 w-full pb-8">
       {/* ============================================================ */}
-      {/* 1. TAMPILAN MOBILE (PHONE) - SINGLE COLUMN COMPACT LAYOUT */}
+      {/* 1. TAMPILAN MOBILE & DESKTOP CORE (Exact Screenshot Layout) */}
       {/* ============================================================ */}
-      <div className="flex flex-col space-y-4 max-w-lg mx-auto lg:hidden">
-        {/* Saldo Utama */}
-        {balanceSummaryNode}
-
-        {/* Runway & Burn Health */}
-        {runwayHealthNode}
-
-        {/* Rekening & Dompet */}
-        {accountsNode}
-
-        {/* Grafik Ringkas Cashflow Bulanan */}
-        <MonthlyCashflowChart 
-          transactions={transactions} 
-          baseCurrency={baseCurrency} 
-        />
-
-        {/* Transaksi Terakhir */}
-        <RecentTransactionsCard
+      <div className="w-full max-w-xl mx-auto space-y-4">
+        {/* SWIPEABLE WALLET CARDS DECK */}
+        <WalletCardDeck
+          wallets={wallets}
+          activeWalletIndex={activeWalletIndex}
+          onSelectWallet={(idx) => setActiveWalletIndex(idx)}
+          onOpenAddWalletModal={() => {
+            setEditingWallet(null);
+            setIsAddWalletModalOpen(true);
+          }}
+          onOpenPulseModal={handleOpenPulse}
           transactions={transactions}
-          onViewAll={() => onNavigateTab('transactions')}
-          onEditTransaction={onEditTransaction}
-          onDeleteTransaction={onDeleteTransaction}
-          baseCurrency={baseCurrency}
+          hideBalance={hideBalance}
+          onToggleHideBalance={handleToggleHideBalance}
         />
 
-        {/* Breakdown Kategori */}
-        <CategoryBreakdownCard
-          transactions={transactions}
-          baseCurrency={baseCurrency}
+        {/* 4 QUICK ACTION BUTTONS (Bills, Receipts, Bill Split, Analytics) */}
+        <QuickActionGrid
+          onOpenBills={() => onNavigateTab('recurring')}
+          onOpenReceipts={() => setIsReceiptsModalOpen(true)}
+          onOpenBillSplit={() => setIsBillSplitModalOpen(true)}
+          onOpenAnalytics={() => setShowAnalyticsSection(!showAnalyticsSection)}
         />
-      </div>
 
-      {/* ============================================================ */}
-      {/* 2. TAMPILAN WEB / DESKTOP (LAYAR LEBAR lg:) - 2-KOLOM GRID */}
-      {/* ============================================================ */}
-      <div className="hidden lg:grid lg:grid-cols-12 gap-6 items-start w-full">
-        {/* KOLOM KIRI (7 Kolom): Ringkasan Saldo, Chart/Grafik Cashflow Bulanan, Tombol Transaksi, Runway, Rekening */}
-        <div className="lg:col-span-7 xl:col-span-7 space-y-6">
-          {/* Ringkasan Saldo & Quick Action */}
-          {balanceSummaryNode}
-
-          {/* Chart / Grafik Cashflow Bulanan */}
-          <MonthlyCashflowChart
+        {/* RECENT TRANSACTIONS FOR CURRENT WALLET (Recent · TnG) */}
+        {activeWallet && (
+          <AccountRecentTransactions
+            activeWallet={activeWallet}
             transactions={transactions}
-            baseCurrency={baseCurrency}
-          />
-
-          {/* Runway Ketahanan Kas */}
-          {runwayHealthNode}
-
-          {/* Alokasi Rekening & Dompet */}
-          {accountsNode}
-        </div>
-
-        {/* KOLOM KANAN (5 Kolom): Daftar Transaksi Terakhir (History) & Breakdown Kategori */}
-        <div className="lg:col-span-5 xl:col-span-5 space-y-6">
-          {/* Daftar Transaksi Terakhir (History) */}
-          <RecentTransactionsCard
-            transactions={transactions}
+            onOpenMoveModal={() => setIsMoveModalOpen(true)}
             onViewAll={() => onNavigateTab('transactions')}
+            onOpenAddModal={onOpenAddModal}
             onEditTransaction={onEditTransaction}
             onDeleteTransaction={onDeleteTransaction}
-            baseCurrency={baseCurrency}
+            hideBalance={hideBalance}
+          />
+        )}
+
+        {/* TOGGLEABLE / EXTENDED ANALYTICS & CHARTS SECTION */}
+        {showAnalyticsSection && (
+          <div className="space-y-4 pt-2 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-1">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
+                <BarChart3 className="w-3.5 h-3.5 text-zinc-950 dark:text-white" />
+                <span>Analisis & Visualisasi Cashflow</span>
+              </h4>
+              <button
+                type="button"
+                onClick={() => setShowAnalyticsSection(false)}
+                className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white font-medium"
+              >
+                Tutup
+              </button>
+            </div>
+
+            <MonthlyCashflowChart 
+              transactions={transactions} 
+              baseCurrency={baseCurrency} 
+            />
+
+            <CategoryBreakdownCard
+              transactions={transactions}
+              baseCurrency={baseCurrency}
+            />
+          </div>
+        )}
+
+        {/* DESKTOP WIDE VIEW COMPLEMENTARY CARDS */}
+        <div className="hidden lg:grid grid-cols-2 gap-4 pt-4 border-t border-zinc-200/80 dark:border-zinc-800/80">
+          <MonthlyCashflowChart 
+            transactions={transactions} 
+            baseCurrency={baseCurrency} 
           />
 
-          {/* Breakdown Kategori Pengeluaran & Pemasukan */}
           <CategoryBreakdownCard
             transactions={transactions}
             baseCurrency={baseCurrency}
           />
         </div>
       </div>
+
+      {/* ============================================================ */}
+      {/* MODALS */}
+      {/* ============================================================ */}
+
+      {/* Add / Edit Wallet Modal */}
+      <AddWalletModal
+        isOpen={isAddWalletModalOpen}
+        onClose={() => {
+          setIsAddWalletModalOpen(false);
+          setEditingWallet(null);
+        }}
+        onSave={handleSaveWallet}
+        onDelete={handleDeleteWallet}
+        editingWallet={editingWallet}
+        baseCurrency={baseCurrency}
+      />
+
+      {/* Move Funds / Transfer Modal */}
+      {activeWallet && (
+        <MoveFundsModal
+          isOpen={isMoveModalOpen}
+          onClose={() => setIsMoveModalOpen(false)}
+          wallets={wallets}
+          activeWallet={activeWallet}
+          onTransfer={handleTransfer}
+        />
+      )}
+
+      {/* Bill Split Modal */}
+      <BillSplitModal
+        isOpen={isBillSplitModalOpen}
+        onClose={() => setIsBillSplitModalOpen(false)}
+        currencySymbol={currSymbol}
+      />
+
+      {/* Receipts Manager Modal */}
+      <ReceiptsModal
+        isOpen={isReceiptsModalOpen}
+        onClose={() => setIsReceiptsModalOpen(false)}
+        currencySymbol={currSymbol}
+      />
+
+      {/* Pulse & Health Modal */}
+      <PulseModal
+        isOpen={isPulseModalOpen}
+        onClose={() => {
+          setIsPulseModalOpen(false);
+          setPulseTargetWallet(null);
+        }}
+        wallet={pulseTargetWallet || activeWallet}
+        transactions={transactions}
+        onOpenMoveModal={() => setIsMoveModalOpen(true)}
+        onOpenAddTransaction={onOpenAddModal}
+      />
     </div>
   );
 };

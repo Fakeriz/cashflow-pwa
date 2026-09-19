@@ -14,6 +14,8 @@ import {
   saveLocalTransactions, 
   getLocalRecurring, 
   saveLocalRecurring,
+  INITIAL_TRANSACTIONS,
+  INITIAL_RECURRING,
   getSupabaseUser,
   subscribeToAuthChanges,
   fetchUserTransactions,
@@ -41,10 +43,15 @@ import { SupabaseSyncModal } from '@/components/SupabaseSyncModal';
 import { CurrencySettingsModal } from '@/components/CurrencySettingsModal';
 import { AuthModal } from '@/components/AuthModal';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
+import { NotificationsModal } from '@/components/NotificationsModal';
+import { MoreMenuModal } from '@/components/MoreMenuModal';
+import { AddWalletModal } from '@/components/AddWalletModal';
+import { getStoredWallets, saveStoredWallets } from '@/lib/wallets';
+import { BankAccount } from '@/lib/types';
 
 export default function CashflowApp() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
-  // Base currency state (defaults to IDR)
+  // Base currency state (defaults to MYR matching multi-wallet deck)
   const [baseCurrency, setBaseCurrency] = useState<string>(() => getStoredBaseCurrency());
 
   // Supabase Auth state
@@ -64,6 +71,9 @@ export default function CashflowApp() {
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [isCurrencyModalOpen, setIsCurrencyModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
+  const [isMoreMenuModalOpen, setIsMoreMenuModalOpen] = useState(false);
+  const [isAddWalletModalOpen, setIsAddWalletModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   // Sync with base currency changes
@@ -421,6 +431,7 @@ export default function CashflowApp() {
           baseCurrency={baseCurrency}
           onOpenCurrencyModal={() => setIsCurrencyModalOpen(true)}
           activeTab={activeTab}
+          onOpenNotifications={() => setIsNotificationsModalOpen(true)}
         />
 
         {/* Main Content Viewport */}
@@ -457,6 +468,7 @@ export default function CashflowApp() {
                 setIsAddModalOpen(true);
               }}
               onDeleteTransaction={handleDeleteTransaction}
+              onAddTransactionDirect={(tx) => handleSaveTransaction(tx)}
             />
           )}
 
@@ -505,7 +517,42 @@ export default function CashflowApp() {
           setEditingTransaction(null);
           setIsAddModalOpen(true);
         }}
+        onOpenMoreMenu={() => setIsMoreMenuModalOpen(true)}
         isSupabaseConnected={isSupabaseConnected}
+      />
+
+      {/* Notifications Modal */}
+      <NotificationsModal
+        isOpen={isNotificationsModalOpen}
+        onClose={() => setIsNotificationsModalOpen(false)}
+      />
+
+      {/* More / Settings Menu Modal */}
+      <MoreMenuModal
+        isOpen={isMoreMenuModalOpen}
+        onClose={() => setIsMoreMenuModalOpen(false)}
+        onOpenAddWallet={() => setIsAddWalletModalOpen(true)}
+        onOpenRecurring={() => setActiveTab('recurring')}
+        onOpenCurrency={() => setIsCurrencyModalOpen(true)}
+        onOpenSync={() => setIsSyncModalOpen(true)}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        baseCurrency={baseCurrency}
+        isSupabaseConnected={isSupabaseConnected}
+      />
+
+      {/* Add Wallet Modal (Global trigger from More menu) */}
+      <AddWalletModal
+        isOpen={isAddWalletModalOpen}
+        onClose={() => setIsAddWalletModalOpen(false)}
+        onSave={(wallet) => {
+          const current = getStoredWallets();
+          const updated = [...current, wallet];
+          saveStoredWallets(updated);
+          setIsAddWalletModalOpen(false);
+        }}
+        baseCurrency={baseCurrency}
       />
 
       {/* Supabase Auth Modal (Login / Register / Profile) */}

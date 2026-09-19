@@ -110,9 +110,9 @@ export const DEFAULT_USD_RATES: Record<string, number> = {
 const CACHED_RATES_KEY = 'cashflow_cached_exchange_rates_v1';
 const BASE_CURRENCY_KEY = 'cashflow_base_currency_v1';
 
-// Get base currency from localStorage (default: IDR)
+// Get base currency from localStorage (default: MYR)
 export function getStoredBaseCurrency(): string {
-  if (typeof window === 'undefined') return 'IDR';
+  if (typeof window === 'undefined') return 'MYR';
   try {
     const stored = localStorage.getItem(BASE_CURRENCY_KEY);
     if (stored && SUPPORTED_CURRENCIES[stored]) {
@@ -121,7 +121,7 @@ export function getStoredBaseCurrency(): string {
   } catch {
     // fallback
   }
-  return 'IDR';
+  return 'MYR';
 }
 
 export function setStoredBaseCurrency(currencyCode: string): void {

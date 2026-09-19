@@ -4,11 +4,38 @@ import { Transaction, RecurringBill, UserProfile } from './types';
 // Storage keys for local fallback or override
 const SUPABASE_URL_KEY = 'cashflow_supabase_url';
 const SUPABASE_KEY_KEY = 'cashflow_supabase_anon_key';
-const LOCAL_TRANSACTIONS_KEY = 'cashflow_local_transactions_v3';
+const LOCAL_TRANSACTIONS_KEY = 'cashflow_local_transactions_v4';
 const LOCAL_RECURRING_KEY = 'cashflow_local_recurring_v3';
 
-// Initial realistic seed data in Indonesian Rupiah (IDR) with multi-currency demo
+// Initial realistic seed data with TnG and Bank Jago multi-wallet demo
 export const INITIAL_TRANSACTIONS: Transaction[] = [
+  {
+    id: 'tx-tng-food',
+    type: 'outflow',
+    amount: 6.00,
+    description: 'Food & Dining',
+    category: 'Food & Dining',
+    account: 'TnG',
+    date: '2026-09-18',
+    time: '12:10 PM',
+    notes: 'Food & Dining',
+    currency: 'MYR',
+    createdAt: '2026-09-18T12:10:00.000Z',
+  },
+  {
+    id: 'tx-tng-transfer',
+    type: 'outflow',
+    amount: 275.00,
+    description: 'TnG → Bank Jago',
+    category: 'Lainnya',
+    account: 'TnG',
+    transferToAccount: 'Bank Jago',
+    date: '2026-09-18',
+    time: '12:09 PM',
+    notes: 'New Transfer',
+    currency: 'MYR',
+    createdAt: '2026-09-18T12:09:00.000Z',
+  },
   {
     id: 'tx-1',
     type: 'inflow',
@@ -16,10 +43,10 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     description: 'Pembayaran Klien - Proyek Aplikasi Web',
     category: 'Bisnis & Klien',
     account: 'Operating Account',
-    date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    date: '2026-09-17',
     isRecurring: true,
     currency: 'IDR',
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-09-17T09:00:00.000Z',
   },
   {
     id: 'tx-2',
@@ -28,13 +55,13 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     description: 'Makan Malam di Luar Negeri (Transit Singapore)',
     category: 'Makanan',
     account: 'Credit Card',
-    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    date: '2026-09-16',
     isRecurring: false,
     currency: 'SGD',
     originalAmount: 37.31,
     exchangeRate: 12450,
     baseCurrency: 'IDR',
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-09-16T19:30:00.000Z',
   },
   {
     id: 'tx-3',
@@ -43,10 +70,10 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     description: 'Makan Siang & Kopi Santai',
     category: 'Makanan',
     account: 'Checking Account',
-    date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    date: '2026-09-15',
     isRecurring: false,
     currency: 'IDR',
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-09-15T13:00:00.000Z',
   },
   {
     id: 'tx-4',
@@ -55,10 +82,10 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     description: 'Ongkos Grab / Transportasi Kerja',
     category: 'Transportasi',
     account: 'Cash / Petty',
-    date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    date: '2026-09-14',
     isRecurring: false,
     currency: 'IDR',
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-09-14T08:30:00.000Z',
   },
   {
     id: 'tx-5',
@@ -67,10 +94,10 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     description: 'Tagihan Listrik PLN & Air Bulanan',
     category: 'Tagihan',
     account: 'Checking Account',
-    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    date: '2026-09-13',
     isRecurring: true,
     currency: 'IDR',
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-09-13T10:00:00.000Z',
   },
   {
     id: 'tx-6',
@@ -79,13 +106,13 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     description: 'Langganan Server Cloud (AWS / DigitalOcean $20)',
     category: 'Software & SaaS',
     account: 'Credit Card',
-    date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    date: '2026-09-12',
     isRecurring: true,
     currency: 'USD',
     originalAmount: 20,
     exchangeRate: 16300,
     baseCurrency: 'IDR',
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-09-12T15:00:00.000Z',
   },
   {
     id: 'tx-7',
@@ -94,10 +121,10 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     description: 'Penjualan Template & Aset Digital',
     category: 'Penjualan',
     account: 'Checking Account',
-    date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    date: '2026-09-10',
     isRecurring: false,
     currency: 'IDR',
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-09-10T11:00:00.000Z',
   },
   {
     id: 'tx-8',
@@ -106,10 +133,10 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     description: 'Tagihan Internet WiFi Fiber Optik',
     category: 'Tagihan',
     account: 'Checking Account',
-    date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    date: '2026-09-08',
     isRecurring: true,
     currency: 'IDR',
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-09-08T14:00:00.000Z',
   }
 ];
 
@@ -122,7 +149,7 @@ export const INITIAL_RECURRING: RecurringBill[] = [
     category: 'Bisnis & Klien',
     account: 'Operating Account',
     frequency: 'monthly',
-    nextDueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    nextDueDate: '2026-09-28',
     autoRecord: true,
     currency: 'IDR',
   },
@@ -134,7 +161,7 @@ export const INITIAL_RECURRING: RecurringBill[] = [
     category: 'Tempat Tinggal',
     account: 'Operating Account',
     frequency: 'monthly',
-    nextDueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    nextDueDate: '2026-10-02',
     autoRecord: true,
     currency: 'IDR',
   },
@@ -146,7 +173,7 @@ export const INITIAL_RECURRING: RecurringBill[] = [
     category: 'Tagihan',
     account: 'Checking Account',
     frequency: 'monthly',
-    nextDueDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    nextDueDate: '2026-09-24',
     autoRecord: true,
     currency: 'IDR',
   },
@@ -158,7 +185,7 @@ export const INITIAL_RECURRING: RecurringBill[] = [
     category: 'Software & SaaS',
     account: 'Credit Card',
     frequency: 'monthly',
-    nextDueDate: new Date(Date.now() + 18 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    nextDueDate: '2026-10-06',
     autoRecord: false,
     currency: 'IDR',
   }
@@ -372,6 +399,36 @@ export async function signOutUser(): Promise<{ error: string | null }> {
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : 'Gagal keluar akun.',
+    };
+  }
+}
+
+export async function resetPasswordForEmail(
+  email: string
+): Promise<{ success: boolean; error: string | null }> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return {
+      success: false,
+      error: 'Supabase belum dikonfigurasi. Silakan masukkan Supabase URL & Anon Key di pengaturan.',
+    };
+  }
+
+  try {
+    const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}` : undefined;
+    const { error } = await client.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo,
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, error: null };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Gagal mengirim email pemulihan kata sandi.',
     };
   }
 }
