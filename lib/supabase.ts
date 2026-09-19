@@ -276,11 +276,18 @@ export async function testSupabaseConnection(): Promise<{ success: boolean; mess
 // SUPABASE AUTHENTICATION HELPERS
 // ----------------------------------------------------
 
-function mapSupabaseUserToProfile(user: SupabaseAuthUser): UserProfile {
+function mapSupabaseUserToProfile(user?: SupabaseAuthUser | null): UserProfile {
+  if (!user) {
+    return {
+      id: '',
+      email: '',
+      fullName: 'User',
+    };
+  }
   return {
-    id: user.id,
+    id: user.id || '',
     email: user.email || '',
-    fullName: (user.user_metadata?.full_name as string) || user.email?.split('@')[0] || 'User',
+    fullName: (user.user_metadata?.full_name as string) || user.email?.split('@')?.[0] || 'User',
   };
 }
 
@@ -477,11 +484,19 @@ export function getLocalTransactions(userId?: string): Transaction[] {
   if (!raw) {
     // Seed initial demo data for this profile
     const seeded = INITIAL_TRANSACTIONS.map((t) => ({ ...t, userId }));
-    localStorage.setItem(key, JSON.stringify(seeded));
+    try {
+      localStorage.setItem(key, JSON.stringify(seeded));
+    } catch {
+      // ignore
+    }
     return seeded;
   }
   try {
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    return INITIAL_TRANSACTIONS;
   } catch {
     return INITIAL_TRANSACTIONS;
   }
@@ -490,7 +505,12 @@ export function getLocalTransactions(userId?: string): Transaction[] {
 export function saveLocalTransactions(txs: Transaction[], userId?: string) {
   if (typeof window !== 'undefined') {
     const key = getTxStorageKey(userId);
-    localStorage.setItem(key, JSON.stringify(txs));
+    try {
+      const safeTxs = Array.isArray(txs) ? txs : [];
+      localStorage.setItem(key, JSON.stringify(safeTxs));
+    } catch {
+      // ignore
+    }
   }
 }
 
@@ -500,11 +520,19 @@ export function getLocalRecurring(userId?: string): RecurringBill[] {
   const raw = localStorage.getItem(key);
   if (!raw) {
     const seeded = INITIAL_RECURRING.map((r) => ({ ...r, userId }));
-    localStorage.setItem(key, JSON.stringify(seeded));
+    try {
+      localStorage.setItem(key, JSON.stringify(seeded));
+    } catch {
+      // ignore
+    }
     return seeded;
   }
   try {
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    return INITIAL_RECURRING;
   } catch {
     return INITIAL_RECURRING;
   }
@@ -513,7 +541,12 @@ export function getLocalRecurring(userId?: string): RecurringBill[] {
 export function saveLocalRecurring(bills: RecurringBill[], userId?: string) {
   if (typeof window !== 'undefined') {
     const key = getRecStorageKey(userId);
-    localStorage.setItem(key, JSON.stringify(bills));
+    try {
+      const safeBills = Array.isArray(bills) ? bills : [];
+      localStorage.setItem(key, JSON.stringify(safeBills));
+    } catch {
+      // ignore
+    }
   }
 }
 

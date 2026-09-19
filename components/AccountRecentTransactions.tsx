@@ -43,21 +43,34 @@ export const AccountRecentTransactions: React.FC<AccountRecentTransactionsProps>
   onDeleteTransaction,
   hideBalance = false,
 }) => {
+  const safeWallet = activeWallet || {
+    id: 'default-wallet',
+    name: 'Wallet',
+    type: 'bank' as const,
+    currency: 'IDR',
+    initialBalance: 0,
+    colorGradient: 'from-zinc-900 to-zinc-950',
+  };
+  const walletName = safeWallet.name || '';
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+
   // Filter transactions for this specific wallet
   // Either originated from this wallet, or transferred TO this wallet
-  const walletTransactions = transactions.filter(
-    (tx) => tx.account === activeWallet.name || tx.transferToAccount === activeWallet.name
+  const walletTransactions = safeTransactions.filter(
+    (tx) => tx && (tx.account === walletName || tx.transferToAccount === walletName)
   );
 
   // Helper to choose icon
-  const getCategoryIcon = (tx: Transaction) => {
-    // If it's a transfer
-    if (tx.transferToAccount || tx.description.includes('→') || tx.category === 'Lainnya' && tx.description.toLowerCase().includes('transfer')) {
-      return <ArrowLeftRight className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />;
-    }
+  const getCategoryIcon = (tx?: Transaction | null) => {
+    if (!tx) return <Receipt className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />;
 
     const desc = (tx.description || '').toLowerCase();
     const cat = (tx.category || '').toLowerCase();
+
+    // If it's a transfer
+    if (tx.transferToAccount || desc.includes('→') || (cat === 'lainnya' && desc.includes('transfer'))) {
+      return <ArrowLeftRight className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />;
+    }
 
     if (cat.includes('makan') || desc.includes('food') || desc.includes('dining') || desc.includes('kopi') || desc.includes('lunch')) {
       return <Utensils className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />;
@@ -81,7 +94,7 @@ export const AccountRecentTransactions: React.FC<AccountRecentTransactionsProps>
     return <Receipt className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />;
   };
 
-  const curr = activeWallet.currency || 'MYR';
+  const curr = safeWallet.currency || 'MYR';
   const currencySymbol = curr === 'MYR' ? 'RM' : curr === 'IDR' ? 'Rp' : curr === 'USD' ? '$' : curr;
 
   return (
@@ -90,7 +103,7 @@ export const AccountRecentTransactions: React.FC<AccountRecentTransactionsProps>
       <div className="flex items-center justify-between pb-3.5 border-b border-zinc-100 dark:border-zinc-800">
         <div className="flex items-center gap-1.5">
           <h3 className="text-base font-bold text-zinc-950 dark:text-white tracking-tight">
-            Recent · {activeWallet.name}
+            Recent · {walletName}
           </h3>
         </div>
 
@@ -101,7 +114,7 @@ export const AccountRecentTransactions: React.FC<AccountRecentTransactionsProps>
             type="button"
             onClick={onOpenMoveModal}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-semibold shadow-2xs transition active:scale-95"
-            title={`Pindahkan dana dari/ke ${activeWallet.name}`}
+            title={`Pindahkan dana dari/ke ${walletName}`}
           >
             <ArrowLeftRight className="w-3.5 h-3.5" />
             <span>Move</span>
@@ -124,7 +137,7 @@ export const AccountRecentTransactions: React.FC<AccountRecentTransactionsProps>
         {walletTransactions.length === 0 ? (
           <div className="py-8 text-center space-y-2">
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Belum ada transaksi di akun <strong>{activeWallet.name}</strong>.
+              Belum ada transaksi di akun <strong>{walletName}</strong>.
             </p>
             <button
               type="button"
@@ -136,24 +149,25 @@ export const AccountRecentTransactions: React.FC<AccountRecentTransactionsProps>
             </button>
           </div>
         ) : (
-          walletTransactions.slice(0, 6).map((tx) => {
-            const isTransfer = !!tx.transferToAccount || tx.description.includes('→');
-            const isIncomingTransfer = tx.transferToAccount === activeWallet.name && tx.account !== activeWallet.name;
-            const isOutgoing = tx.type === 'outflow' && !isIncomingTransfer;
+          walletTransactions.slice(0, 6).map((tx, idx) => {
+            const isTransfer = !!tx?.transferToAccount || !!tx?.description?.includes('→');
+            const isIncomingTransfer = tx?.transferToAccount === walletName && tx?.account !== walletName;
+            const isOutgoing = tx?.type === 'outflow' && !isIncomingTransfer;
             
             // Format subtitle line: e.g. "Food & Dining · 19 Sep 2026 · 12:10 PM" or "New Transfer · 19 Sep 2026 · 12:09 PM"
-            let categoryOrNote = tx.notes || tx.category;
-            if (isTransfer && !tx.notes) {
+            let categoryOrNote = tx?.notes || tx?.category || 'Transaksi';
+            if (isTransfer && !tx?.notes) {
               categoryOrNote = 'New Transfer';
             }
-            const dateStr = tx.date;
-            const timeStr = tx.time || '12:00 PM';
+            const dateStr = tx?.date || '';
+            const timeStr = tx?.time || '12:00 PM';
             const subtitle = `${categoryOrNote} · ${dateStr} · ${timeStr}`;
+            const amountVal = typeof tx?.amount === 'number' && !isNaN(tx.amount) ? tx.amount : 0;
 
             return (
               <div
-                key={tx.id}
-                onClick={() => onEditTransaction && onEditTransaction(tx)}
+                key={tx?.id || `acc-tx-${idx}`}
+                onClick={() => onEditTransaction && tx && onEditTransaction(tx)}
                 className="group flex items-center justify-between py-3.5 px-1 hover:bg-zinc-50/60 dark:hover:bg-zinc-800/40 rounded-xl transition cursor-pointer"
               >
                 {/* Left: Icon in square rounded box + Title & Subtitle */}
@@ -163,7 +177,7 @@ export const AccountRecentTransactions: React.FC<AccountRecentTransactionsProps>
                   </div>
                   <div className="min-w-0">
                     <h4 className="text-sm font-bold text-zinc-900 dark:text-white truncate">
-                      {tx.description}
+                      {tx?.description || 'Tanpa keterangan'}
                     </h4>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
                       {subtitle}
@@ -186,7 +200,7 @@ export const AccountRecentTransactions: React.FC<AccountRecentTransactionsProps>
                       '••••'
                     ) : (
                       <>
-                        {currencySymbol} {tx.amount.toFixed(2)}
+                        {currencySymbol} {amountVal.toFixed(2)}
                       </>
                     )}
                   </span>

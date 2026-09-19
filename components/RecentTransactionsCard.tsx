@@ -30,8 +30,10 @@ export const RecentTransactionsCard: React.FC<RecentTransactionsCardProps> = ({
   baseCurrency = 'IDR',
 }) => {
   const [filter, setFilter] = useState<'all' | 'inflow' | 'outflow'>('all');
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
 
-  const filtered = transactions.filter((t) => {
+  const filtered = safeTransactions.filter((t) => {
+    if (!t) return false;
     if (filter === 'all') return true;
     return t.type === filter;
   });
@@ -101,14 +103,19 @@ export const RecentTransactionsCard: React.FC<RecentTransactionsCardProps> = ({
             Belum ada transaksi pada kategori ini
           </div>
         ) : (
-          recentList.map((tx) => {
+          recentList.map((tx, idx) => {
+            if (!tx) return null;
             const isInflow = tx.type === 'inflow';
             const isForeign = tx.currency && tx.currency !== baseCurrency;
-            const foreignCurrInfo = isForeign ? SUPPORTED_CURRENCIES[tx.currency!] : null;
+            const foreignCurrInfo = isForeign && tx.currency ? SUPPORTED_CURRENCIES[tx.currency] : null;
+            const txDate = tx.date ? new Date(tx.date) : null;
+            const formattedDate = txDate && !isNaN(txDate.getTime())
+              ? txDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+              : '-';
 
             return (
               <div
-                key={tx.id}
+                key={tx.id || `recent-tx-${idx}`}
                 className="group flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950/70 border border-zinc-200/80 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700 transition"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -129,7 +136,7 @@ export const RecentTransactionsCard: React.FC<RecentTransactionsCardProps> = ({
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="text-xs font-bold text-zinc-950 dark:text-white truncate">
-                        {tx.description}
+                        {tx.description || 'Tanpa keterangan'}
                       </p>
                       {tx.isRecurring && (
                         <span title="Transaksi Rutin">
@@ -148,11 +155,11 @@ export const RecentTransactionsCard: React.FC<RecentTransactionsCardProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2 text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                      <span>{tx.category}</span>
+                      <span>{tx.category || 'Umum'}</span>
                       <span>•</span>
-                      <span>{tx.account}</span>
+                      <span>{tx.account || '-'}</span>
                       <span>•</span>
-                      <span>{new Date(tx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
+                      <span>{formattedDate}</span>
                     </div>
                   </div>
                 </div>
@@ -164,11 +171,11 @@ export const RecentTransactionsCard: React.FC<RecentTransactionsCardProps> = ({
                         isInflow ? 'text-zinc-950 dark:text-white' : 'text-zinc-700 dark:text-zinc-300'
                       }`}
                     >
-                      {isInflow ? '+' : '-'}{formatCurrency(tx.amount, baseCurrency)}
+                      {isInflow ? '+' : '-'}{formatCurrency(tx.amount ?? 0, baseCurrency)}
                     </span>
                     {isForeign && tx.originalAmount && (
                       <span className="text-[10px] text-zinc-400 dark:text-zinc-500 block">
-                        {formatCurrency(tx.originalAmount, tx.currency!)}
+                        {formatCurrency(tx.originalAmount, tx.currency || 'USD')}
                       </span>
                     )}
                   </div>

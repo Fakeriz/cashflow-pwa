@@ -34,7 +34,8 @@ export const ForecastView: React.FC<ForecastViewProps> = ({
   const forecastDays: ForecastDay[] = useMemo(() => {
     const days: ForecastDay[] = [];
     const today = new Date();
-    let rollingBalance = currentBalance;
+    let rollingBalance = typeof currentBalance === 'number' && !isNaN(currentBalance) ? currentBalance : 0;
+    const safeBills = Array.isArray(recurringBills) ? recurringBills : [];
 
     for (let i = 1; i <= 30; i++) {
       const date = new Date(today);
@@ -46,18 +47,21 @@ export const ForecastView: React.FC<ForecastViewProps> = ({
       const dayEvents: string[] = [];
 
       // Check recurring items scheduled for this date or interval
-      recurringBills.forEach((bill) => {
-        const billDue = new Date(bill.nextDueDate);
-        const isSameDayOfMonth = billDue.getDate() === date.getDate();
+      safeBills.forEach((bill) => {
+        if (!bill) return;
+        const dueDate = bill.nextDueDate;
+        const billDue = dueDate ? new Date(dueDate) : null;
+        const isSameDayOfMonth = billDue && !isNaN(billDue.getTime()) && billDue.getDate() === date.getDate();
+        const amt = typeof bill.amount === 'number' && !isNaN(bill.amount) ? bill.amount : 0;
 
         // For monthly bills or direct next due date match
-        if (bill.nextDueDate === dateStr || (bill.frequency === 'monthly' && isSameDayOfMonth)) {
+        if (dueDate === dateStr || (bill.frequency === 'monthly' && isSameDayOfMonth)) {
           if (bill.type === 'inflow') {
-            dayInflow += bill.amount;
-            dayEvents.push(`+ ${formatCurrency(bill.amount, baseCurrency)} (${bill.title})`);
+            dayInflow += amt;
+            dayEvents.push(`+ ${formatCurrency(amt, baseCurrency)} (${bill.title || 'Pemasukan'})`);
           } else {
-            dayOutflow += bill.amount;
-            dayEvents.push(`- ${formatCurrency(bill.amount, baseCurrency)} (${bill.title})`);
+            dayOutflow += amt;
+            dayEvents.push(`- ${formatCurrency(amt, baseCurrency)} (${bill.title || 'Pengeluaran'})`);
           }
         }
       });

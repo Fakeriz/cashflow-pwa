@@ -81,22 +81,30 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
     setShowAddForm(false);
   };
 
+  const safeBills = Array.isArray(recurringBills) ? recurringBills : [];
+
   // Calculate monthly fixed commitments
-  const totalFixedInflow = recurringBills
-    .filter((b) => b.type === 'inflow')
-    .reduce((sum, b) => sum + b.amount, 0);
+  const totalFixedInflow = safeBills
+    .filter((b) => b?.type === 'inflow')
+    .reduce((sum, b) => sum + (b?.amount || 0), 0);
 
-  const totalFixedOutflow = recurringBills
-    .filter((b) => b.type === 'outflow')
-    .reduce((sum, b) => sum + b.amount, 0);
+  const totalFixedOutflow = safeBills
+    .filter((b) => b?.type === 'outflow')
+    .reduce((sum, b) => sum + (b?.amount || 0), 0);
 
-  const getDaysUntil = (dateStr: string) => {
-    const target = new Date(dateStr).getTime();
-    const today = new Date().setHours(0, 0, 0, 0);
-    const diffDays = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) return { text: `Telat ${Math.abs(diffDays)} hari`, isPast: true };
-    if (diffDays === 0) return { text: 'Jatuh tempo hari ini', isToday: true };
-    return { text: `${diffDays} hari lagi`, isPast: false };
+  const getDaysUntil = (dateStr?: string) => {
+    try {
+      if (!dateStr) return { text: '-', isPast: false };
+      const target = new Date(dateStr).getTime();
+      if (isNaN(target)) return { text: '-', isPast: false };
+      const today = new Date().setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) return { text: `Telat ${Math.abs(diffDays)} hari`, isPast: true };
+      if (diffDays === 0) return { text: 'Jatuh tempo hari ini', isToday: true };
+      return { text: `${diffDays} hari lagi`, isPast: false };
+    } catch {
+      return { text: '-', isPast: false };
+    }
   };
 
   const getFrequencyLabel = (freq: RecurrenceFrequency) => {
@@ -313,7 +321,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
 
       {/* List of Recurring Items */}
       <div className="space-y-2.5">
-        {recurringBills.length === 0 ? (
+        {safeBills.length === 0 ? (
           <div className="p-8 rounded-3xl bg-zinc-50 dark:bg-zinc-900/40 border border-dashed border-zinc-300 dark:border-zinc-800 text-center space-y-2">
             <Repeat className="w-6 h-6 mx-auto text-zinc-400" />
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -321,13 +329,15 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
             </p>
           </div>
         ) : (
-          recurringBills.map((bill) => {
+          safeBills.map((bill, idx) => {
+            if (!bill) return null;
             const dueInfo = getDaysUntil(bill.nextDueDate);
             const isInflow = bill.type === 'inflow';
+            const billId = bill.id || `bill-${idx}`;
 
             return (
               <div
-                key={bill.id}
+                key={billId}
                 className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition flex items-center justify-between gap-3 shadow-sm"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -344,7 +354,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-zinc-900 dark:text-white truncate block">
-                        {bill.title}
+                        {bill.title || 'Tagihan Tanpa Nama'}
                       </span>
                       <Badge
                         variant={dueInfo.isPast ? 'destructive' : dueInfo.isToday ? 'default' : 'secondary'}
@@ -354,11 +364,11 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                      <span className="text-zinc-700 dark:text-zinc-300 font-medium">{bill.category}</span>
+                      <span className="text-zinc-700 dark:text-zinc-300 font-medium">{bill.category || 'Tagihan'}</span>
                       <span>•</span>
                       <span>{getFrequencyLabel(bill.frequency)}</span>
                       <span>•</span>
-                      <span>Jatuh tempo: {bill.nextDueDate}</span>
+                      <span>Jatuh tempo: {bill.nextDueDate || '-'}</span>
                     </div>
                   </div>
                 </div>
@@ -370,9 +380,9 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                         isInflow ? 'text-zinc-950 dark:text-white font-black' : 'text-zinc-600 dark:text-zinc-300'
                       }`}
                     >
-                      {formatCurrency(bill.amount, baseCurrency, { includeSign: true })}
+                      {formatCurrency(bill.amount ?? 0, baseCurrency, { includeSign: true })}
                     </span>
-                    <span className="text-[10px] text-zinc-400">{bill.account}</span>
+                    <span className="text-[10px] text-zinc-400">{bill.account || '-'}</span>
                   </div>
 
                   {/* Mark as Paid Action */}
@@ -388,7 +398,7 @@ export const RecurringManager: React.FC<RecurringManagerProps> = ({
                   </Button>
 
                   <button
-                    onClick={() => onDeleteRecurring(bill.id)}
+                    onClick={() => bill.id && onDeleteRecurring(bill.id)}
                     className="p-1.5 text-zinc-400 hover:text-zinc-950 dark:hover:text-white rounded-lg transition"
                     title="Hapus jadwal"
                   >

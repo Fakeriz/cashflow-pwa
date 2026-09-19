@@ -79,8 +79,8 @@ export function setStoredHideBalance(hide: boolean): void {
  * Calculates current balance, income and spending for a specific wallet account
  */
 export function calculateWalletStats(
-  wallet: BankAccount,
-  transactions: Transaction[]
+  wallet?: BankAccount | null,
+  transactions?: Transaction[] | null
 ): {
   currentBalance: number;
   totalIncome: number;
@@ -88,25 +88,31 @@ export function calculateWalletStats(
 } {
   let income = 0;
   let spending = 0;
-  let balance = wallet.initialBalance;
+  let balance = wallet?.initialBalance ?? 0;
+  const targetWalletName = wallet?.name ?? '';
+
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
 
   // Filter transactions related to this wallet (by account name or transfer target)
-  transactions.forEach((tx) => {
+  safeTransactions.forEach((tx) => {
+    if (!tx) return;
+    const txAmount = typeof tx.amount === 'number' && !isNaN(tx.amount) ? tx.amount : 0;
+
     // If this transaction is from this wallet
-    if (tx.account === wallet.name) {
+    if (targetWalletName && tx.account === targetWalletName) {
       if (tx.type === 'inflow') {
-        income += tx.amount;
-        balance += tx.amount;
+        income += txAmount;
+        balance += txAmount;
       } else if (tx.type === 'outflow') {
-        spending += tx.amount;
-        balance -= tx.amount;
+        spending += txAmount;
+        balance -= txAmount;
       }
     }
 
     // If this transaction is a transfer TO this wallet
-    if (tx.transferToAccount === wallet.name && tx.account !== wallet.name) {
-      income += tx.amount;
-      balance += tx.amount;
+    if (targetWalletName && tx.transferToAccount === targetWalletName && tx.account !== targetWalletName) {
+      income += txAmount;
+      balance += txAmount;
     }
   });
 

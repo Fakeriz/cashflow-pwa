@@ -221,11 +221,14 @@ export default function CashflowApp() {
     let totalInflow = 0;
     let totalOutflow = 0;
 
-    transactions.forEach((tx) => {
+    const safeTxs = Array.isArray(transactions) ? transactions : [];
+    safeTxs.forEach((tx) => {
+      if (!tx) return;
+      const amt = typeof tx.amount === 'number' && !isNaN(tx.amount) ? tx.amount : 0;
       if (tx.type === 'inflow') {
-        totalInflow += tx.amount;
+        totalInflow += amt;
       } else {
-        totalOutflow += tx.amount;
+        totalOutflow += amt;
       }
     });
 
@@ -258,10 +261,11 @@ export default function CashflowApp() {
   ) => {
     const userId = currentUser?.id;
     let updatedTxs: Transaction[];
+    const safeTxs = Array.isArray(transactions) ? transactions : [];
 
     if (editingId) {
-      updatedTxs = transactions.map((t) =>
-        t.id === editingId
+      updatedTxs = safeTxs.map((t) =>
+        t?.id === editingId
           ? { ...t, ...data, userId: userId || t.userId, updatedAt: new Date().toISOString() }
           : t
       );
@@ -272,7 +276,7 @@ export default function CashflowApp() {
         id: `tx-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
         createdAt: new Date().toISOString(),
       };
-      updatedTxs = [newTx, ...transactions];
+      updatedTxs = [newTx, ...safeTxs];
     }
 
     setTransactions(updatedTxs);
@@ -280,7 +284,7 @@ export default function CashflowApp() {
 
     // Sync with Supabase if connected
     const txToSync = editingId
-      ? updatedTxs.find((t) => t.id === editingId)
+      ? updatedTxs.find((t) => t?.id === editingId)
       : updatedTxs[0];
 
     if (txToSync) {
@@ -291,7 +295,8 @@ export default function CashflowApp() {
   // Handle Delete Transaction
   const handleDeleteTransaction = async (id: string) => {
     const userId = currentUser?.id;
-    const updated = transactions.filter((t) => t.id !== id);
+    const safeTxs = Array.isArray(transactions) ? transactions : [];
+    const updated = safeTxs.filter((t) => t?.id !== id);
     setTransactions(updated);
     saveLocalTransactions(updated, userId);
 
@@ -301,12 +306,13 @@ export default function CashflowApp() {
   // Handle Add Recurring Bill (Filtered per user)
   const handleAddRecurring = async (billData: Omit<RecurringBill, 'id'>) => {
     const userId = currentUser?.id;
+    const safeBills = Array.isArray(recurringBills) ? recurringBills : [];
     const newBill: RecurringBill = {
       ...billData,
       userId,
       id: `rec-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
     };
-    const updated = [...recurringBills, newBill];
+    const updated = [...safeBills, newBill];
     setRecurringBills(updated);
     saveLocalRecurring(updated, userId);
 
@@ -316,7 +322,8 @@ export default function CashflowApp() {
   // Handle Delete Recurring
   const handleDeleteRecurring = async (id: string) => {
     const userId = currentUser?.id;
-    const updated = recurringBills.filter((b) => b.id !== id);
+    const safeBills = Array.isArray(recurringBills) ? recurringBills : [];
+    const updated = safeBills.filter((b) => b?.id !== id);
     setRecurringBills(updated);
     saveLocalRecurring(updated, userId);
 
@@ -325,16 +332,17 @@ export default function CashflowApp() {
 
   // Handle "Mark as Paid" for Recurring Bill
   const handleMarkPaid = async (bill: RecurringBill) => {
+    if (!bill) return;
     const todayStr = new Date().toISOString().split('T')[0];
     const userId = currentUser?.id;
 
     // 1. Record transaction immediately
     await handleSaveTransaction({
-      type: bill.type,
-      amount: bill.amount,
-      description: `${bill.title} (Pembayaran Rutin)`,
-      category: bill.category,
-      account: bill.account,
+      type: bill.type || 'outflow',
+      amount: Number(bill.amount) || 0,
+      description: `${bill.title || 'Tagihan'} (Pembayaran Rutin)`,
+      category: bill.category || 'Tagihan',
+      account: bill.account || 'Checking Account',
       date: todayStr,
       isRecurring: true,
       recurringId: bill.id,
@@ -344,7 +352,7 @@ export default function CashflowApp() {
     });
 
     // 2. Advance next due date based on frequency
-    const currentDue = new Date(bill.nextDueDate);
+    const currentDue = new Date(bill.nextDueDate || todayStr);
     const nextDate = new Date(currentDue);
 
     if (bill.frequency === 'weekly') nextDate.setDate(nextDate.getDate() + 7);
@@ -353,8 +361,9 @@ export default function CashflowApp() {
     else if (bill.frequency === 'quarterly') nextDate.setMonth(nextDate.getMonth() + 3);
     else if (bill.frequency === 'yearly') nextDate.setFullYear(nextDate.getFullYear() + 1);
 
-    const updatedBills = recurringBills.map((b) =>
-      b.id === bill.id
+    const safeBills = Array.isArray(recurringBills) ? recurringBills : [];
+    const updatedBills = safeBills.map((b) =>
+      b?.id === bill.id
         ? {
             ...b,
             nextDueDate: nextDate.toISOString().split('T')[0],
@@ -407,8 +416,8 @@ export default function CashflowApp() {
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         currentUser={currentUser}
         onLogout={handleLogout}
-        transactionCount={transactions.length}
-        recurringCount={recurringBills.length}
+        transactionCount={transactions?.length || 0}
+        recurringCount={recurringBills?.length || 0}
         isSupabaseConnected={isSupabaseConnected}
         isSyncing={isSyncing}
         baseCurrency={baseCurrency}
@@ -443,7 +452,7 @@ export default function CashflowApp() {
                 <span className="w-2 h-2 rounded-full bg-zinc-950 dark:bg-zinc-100" />
                 <span className="text-zinc-500 dark:text-zinc-400">Akun:</span>
                 <strong className="text-zinc-950 dark:text-white font-bold truncate">
-                  {currentUser.fullName || currentUser.email}
+                  {currentUser?.fullName || currentUser?.email || 'Akun'}
                 </strong>
               </div>
               <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium shrink-0 ml-2">

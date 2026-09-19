@@ -243,14 +243,14 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 flex items-center justify-center text-xs font-bold shrink-0">
-                  {currentUser.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
+                  {currentUser?.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-zinc-950 dark:text-white truncate">
-                    {currentUser.fullName || 'Pengguna'}
+                    {currentUser?.fullName || (currentUser?.email ? currentUser.email.split('@')[0] : 'Pengguna')}
                   </p>
                   <p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
-                    {currentUser.email}
+                    {currentUser?.email || '-'}
                   </p>
                 </div>
               </div>

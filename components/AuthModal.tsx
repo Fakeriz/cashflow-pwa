@@ -206,13 +206,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           <div className="space-y-5">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 flex items-center justify-center font-bold text-lg shadow-md">
-                {currentUser.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
+                {currentUser?.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
               </div>
               <div>
                 <h3 className="text-lg font-bold text-zinc-950 dark:text-white">
-                  {currentUser.fullName || 'Pengguna Cashflow'}
+                  {currentUser?.fullName || 'Pengguna Cashflow'}
                 </h3>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">{currentUser.email}</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">{currentUser?.email || '-'}</p>
               </div>
             </div>
 
@@ -232,7 +232,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   className="flex items-center gap-1 font-mono text-[11px] text-zinc-700 dark:text-zinc-300 hover:underline"
                   title="Klik untuk menyalin User ID"
                 >
-                  <span>{currentUser.id.slice(0, 10)}...</span>
+                  <span>{currentUser?.id ? `${currentUser.id.slice(0, 10)}...` : '-'}</span>
                   {copiedId ? <Check className="w-3 h-3 text-zinc-950 dark:text-white" /> : <Copy className="w-3 h-3" />}
                 </button>
               </div>

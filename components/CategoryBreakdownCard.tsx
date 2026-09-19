@@ -25,11 +25,14 @@ export const CategoryBreakdownCard: React.FC<CategoryBreakdownCardProps> = ({
   const { breakdown, total } = useMemo(() => {
     const map: Record<string, number> = {};
     let totalAmt = 0;
+    const safeTransactions = Array.isArray(transactions) ? transactions : [];
 
-    transactions.forEach((tx) => {
-      if (tx.type === selectedType) {
-        map[tx.category] = (map[tx.category] || 0) + tx.amount;
-        totalAmt += tx.amount;
+    safeTransactions.forEach((tx) => {
+      if (tx && tx.type === selectedType) {
+        const cat = tx.category || 'Lainnya';
+        const amt = typeof tx.amount === 'number' && !isNaN(tx.amount) ? tx.amount : 0;
+        map[cat] = (map[cat] || 0) + amt;
+        totalAmt += amt;
       }
     });
 

@@ -43,8 +43,20 @@ export const WalletCardDeck: React.FC<WalletCardDeckProps> = ({
 }) => {
   const [direction, setDirection] = useState<number>(0);
 
-  const totalCards = wallets.length;
-  const activeWallet = wallets[activeWalletIndex] || wallets[0];
+  const safeWallets: BankAccount[] = Array.isArray(wallets) && wallets.length > 0 ? wallets : [
+    {
+      id: 'default-wallet',
+      name: 'Main Wallet',
+      type: 'bank',
+      currency: 'IDR',
+      initialBalance: 0,
+      categoryTag: 'UTAMA',
+    }
+  ];
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+
+  const totalCards = safeWallets.length;
+  const activeWallet = safeWallets[activeWalletIndex] || safeWallets[0];
 
   const handleNext = () => {
     if (activeWalletIndex < totalCards - 1) {
@@ -78,9 +90,10 @@ export const WalletCardDeck: React.FC<WalletCardDeckProps> = ({
   };
 
   // Helper to render wallet logo / badge matching screenshot
-  const renderWalletBadge = (wallet: BankAccount) => {
-    const isTnG = wallet.name.toLowerCase().includes('tng') || wallet.name.toLowerCase().includes('touch');
-    const isJago = wallet.name.toLowerCase().includes('jago');
+  const renderWalletBadge = (wallet?: BankAccount | null) => {
+    const name = (wallet?.name || '').toLowerCase();
+    const isTnG = name.includes('tng') || name.includes('touch');
+    const isJago = name.includes('jago');
 
     if (isTnG) {
       return (
@@ -103,7 +116,7 @@ export const WalletCardDeck: React.FC<WalletCardDeckProps> = ({
     }
 
     // Default by type
-    if (wallet.type === 'bank') {
+    if (wallet?.type === 'bank') {
       return (
         <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 p-2 flex items-center justify-center shadow-inner">
           <Building2 className="w-5 h-5 text-amber-400" />
@@ -111,7 +124,7 @@ export const WalletCardDeck: React.FC<WalletCardDeckProps> = ({
       );
     }
 
-    if (wallet.type === 'cash') {
+    if (wallet?.type === 'cash') {
       return (
         <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 p-2 flex items-center justify-center shadow-inner">
           <Coins className="w-5 h-5 text-emerald-400" />
@@ -240,10 +253,11 @@ export const WalletCardDeck: React.FC<WalletCardDeckProps> = ({
 
                   {/* Amount Display */}
                   {(() => {
-                    const stats = calculateWalletStats(activeWallet, transactions);
-                    const curr = activeWallet.currency || 'MYR';
+                    const stats = calculateWalletStats(activeWallet, safeTransactions);
+                    const curr = activeWallet?.currency || 'MYR';
                     const symbol = curr === 'MYR' ? 'RM' : curr === 'IDR' ? 'Rp' : curr === 'USD' ? '$' : curr;
-                    const formatted = stats.currentBalance.toLocaleString('en-US', {
+                    const balanceVal = typeof stats?.currentBalance === 'number' && !isNaN(stats.currentBalance) ? stats.currentBalance : 0;
+                    const formatted = balanceVal.toLocaleString('en-US', {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     });
@@ -283,9 +297,10 @@ export const WalletCardDeck: React.FC<WalletCardDeckProps> = ({
                       </span>
                       <span className="text-xs font-semibold text-zinc-200">
                         {hideBalance ? '••••' : (() => {
-                          const stats = calculateWalletStats(activeWallet, transactions);
-                          const symbol = (activeWallet.currency || 'MYR') === 'MYR' ? 'RM' : '';
-                          return `${symbol} ${stats.totalIncome.toFixed(2)}`;
+                          const stats = calculateWalletStats(activeWallet, safeTransactions);
+                          const symbol = (activeWallet?.currency || 'MYR') === 'MYR' ? 'RM' : '';
+                          const inc = typeof stats?.totalIncome === 'number' && !isNaN(stats.totalIncome) ? stats.totalIncome : 0;
+                          return `${symbol} ${inc.toFixed(2)}`;
                         })()}
                       </span>
                     </div>
@@ -297,9 +312,10 @@ export const WalletCardDeck: React.FC<WalletCardDeckProps> = ({
                       </span>
                       <span className="text-xs font-semibold text-zinc-200">
                         {hideBalance ? '••••' : (() => {
-                          const stats = calculateWalletStats(activeWallet, transactions);
-                          const symbol = (activeWallet.currency || 'MYR') === 'MYR' ? 'RM' : '';
-                          return `${symbol} ${stats.totalSpending.toFixed(2)}`;
+                          const stats = calculateWalletStats(activeWallet, safeTransactions);
+                          const symbol = (activeWallet?.currency || 'MYR') === 'MYR' ? 'RM' : '';
+                          const spd = typeof stats?.totalSpending === 'number' && !isNaN(stats.totalSpending) ? stats.totalSpending : 0;
+                          return `${symbol} ${spd.toFixed(2)}`;
                         })()}
                       </span>
                     </div>
@@ -310,7 +326,7 @@ export const WalletCardDeck: React.FC<WalletCardDeckProps> = ({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (onOpenPulseModal) onOpenPulseModal(activeWallet);
+                      if (onOpenPulseModal && activeWallet) onOpenPulseModal(activeWallet);
                     }}
                     className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-zinc-400 hover:text-white transition group py-1"
                     title="Buka statistik kesehatan & pulse kartu"
@@ -340,11 +356,11 @@ export const WalletCardDeck: React.FC<WalletCardDeckProps> = ({
 
         {/* Carousel Dots */}
         <div className="flex items-center gap-1.5">
-          {wallets.map((wallet, index) => {
+          {safeWallets.map((wallet, index) => {
             const isActive = index === activeWalletIndex;
             return (
               <button
-                key={wallet.id}
+                key={wallet?.id || `wallet-dot-${index}`}
                 type="button"
                 onClick={() => {
                   setDirection(index > activeWalletIndex ? 1 : -1);
@@ -355,8 +371,8 @@ export const WalletCardDeck: React.FC<WalletCardDeckProps> = ({
                     ? 'w-6 h-1.5 rounded-full bg-zinc-950 dark:bg-white'
                     : 'w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700 hover:bg-zinc-400 dark:hover:bg-zinc-500'
                 }`}
-                title={`Buka dompet ${wallet.name}`}
-                aria-label={`Pindah ke dompet ${wallet.name}`}
+                title={`Buka dompet ${wallet?.name || ''}`}
+                aria-label={`Pindah ke dompet ${wallet?.name || ''}`}
               />
             );
           })}

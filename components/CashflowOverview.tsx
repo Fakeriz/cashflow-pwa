@@ -94,7 +94,9 @@ export const CashflowOverview: React.FC<CashflowOverviewProps> = ({
     };
   }, []);
 
-  const activeWallet = wallets[activeWalletIndex] || wallets[0];
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  const safeWallets = Array.isArray(wallets) && wallets.length > 0 ? wallets : DEFAULT_WALLETS;
+  const activeWallet = safeWallets[activeWalletIndex] || safeWallets[0] || DEFAULT_WALLETS[0];
 
   const handleToggleHideBalance = () => {
     const next = !hideBalance;
@@ -170,7 +172,7 @@ export const CashflowOverview: React.FC<CashflowOverviewProps> = ({
       <div className="w-full max-w-xl mx-auto space-y-4">
         {/* SWIPEABLE WALLET CARDS DECK */}
         <WalletCardDeck
-          wallets={wallets}
+          wallets={safeWallets}
           activeWalletIndex={activeWalletIndex}
           onSelectWallet={(idx) => setActiveWalletIndex(idx)}
           onOpenAddWalletModal={() => {
@@ -178,7 +180,7 @@ export const CashflowOverview: React.FC<CashflowOverviewProps> = ({
             setIsAddWalletModalOpen(true);
           }}
           onOpenPulseModal={handleOpenPulse}
-          transactions={transactions}
+          transactions={safeTransactions}
           hideBalance={hideBalance}
           onToggleHideBalance={handleToggleHideBalance}
         />
@@ -195,7 +197,7 @@ export const CashflowOverview: React.FC<CashflowOverviewProps> = ({
         {activeWallet && (
           <AccountRecentTransactions
             activeWallet={activeWallet}
-            transactions={transactions}
+            transactions={safeTransactions}
             onOpenMoveModal={() => setIsMoveModalOpen(true)}
             onViewAll={() => onNavigateTab('transactions')}
             onOpenAddModal={onOpenAddModal}
@@ -223,12 +225,12 @@ export const CashflowOverview: React.FC<CashflowOverviewProps> = ({
             </div>
 
             <MonthlyCashflowChart 
-              transactions={transactions} 
+              transactions={safeTransactions} 
               baseCurrency={baseCurrency} 
             />
 
             <CategoryBreakdownCard
-              transactions={transactions}
+              transactions={safeTransactions}
               baseCurrency={baseCurrency}
             />
           </div>
@@ -237,12 +239,12 @@ export const CashflowOverview: React.FC<CashflowOverviewProps> = ({
         {/* DESKTOP WIDE VIEW COMPLEMENTARY CARDS */}
         <div className="hidden lg:grid grid-cols-2 gap-4 pt-4 border-t border-zinc-200/80 dark:border-zinc-800/80">
           <MonthlyCashflowChart 
-            transactions={transactions} 
+            transactions={safeTransactions} 
             baseCurrency={baseCurrency} 
           />
 
           <CategoryBreakdownCard
-            transactions={transactions}
+            transactions={safeTransactions}
             baseCurrency={baseCurrency}
           />
         </div>
@@ -270,7 +272,7 @@ export const CashflowOverview: React.FC<CashflowOverviewProps> = ({
         <MoveFundsModal
           isOpen={isMoveModalOpen}
           onClose={() => setIsMoveModalOpen(false)}
-          wallets={wallets}
+          wallets={safeWallets}
           activeWallet={activeWallet}
           onTransfer={handleTransfer}
         />
@@ -298,7 +300,7 @@ export const CashflowOverview: React.FC<CashflowOverviewProps> = ({
           setPulseTargetWallet(null);
         }}
         wallet={pulseTargetWallet || activeWallet}
-        transactions={transactions}
+        transactions={safeTransactions}
         onOpenMoveModal={() => setIsMoveModalOpen(true)}
         onOpenAddTransaction={onOpenAddModal}
       />

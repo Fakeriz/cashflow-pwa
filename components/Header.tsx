@@ -207,10 +207,10 @@ export const Header: React.FC<HeaderProps> = ({
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold text-zinc-900 dark:text-zinc-100 transition"
               >
                 <div className="w-5 h-5 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 flex items-center justify-center text-[10px] font-bold">
-                  {currentUser.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
+                  {currentUser?.fullName ? currentUser.fullName.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <span className="max-w-[80px] sm:max-w-[110px] truncate hidden xs:inline">
-                  {currentUser.fullName || currentUser.email.split('@')[0]}
+                  {currentUser?.fullName || (currentUser?.email ? currentUser.email.split('@')[0] : 'User')}
                 </span>
                 <ChevronDown className="w-3 h-3 text-zinc-400" />
               </button>
@@ -237,10 +237,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-3 shadow-xl z-50 text-xs space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
                   <div className="px-2 py-1.5 border-b border-zinc-100 dark:border-zinc-800">
                     <p className="font-bold text-zinc-950 dark:text-white truncate">
-                      {currentUser.fullName || 'Pengguna'}
+                      {currentUser?.fullName || 'Pengguna'}
                     </p>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
-                      {currentUser.email}
+                      {currentUser?.email || '-'}
                     </p>
                     <div className="flex items-center gap-1 mt-1 text-[10px] text-zinc-600 dark:text-zinc-400">
                       <ShieldCheck className="w-3 h-3 text-zinc-950 dark:text-zinc-100" />

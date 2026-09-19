@@ -226,7 +226,7 @@ export function convertCurrency(
  * For USD: e.g. "$150.00" or "-$25.00"
  */
 export function formatCurrency(
-  value: number,
+  value?: number | null,
   currencyCode = 'IDR',
   options?: {
     includeSign?: boolean;
@@ -234,9 +234,10 @@ export function formatCurrency(
     compact?: boolean;
   }
 ): string {
-  const info = SUPPORTED_CURRENCIES[currencyCode] || SUPPORTED_CURRENCIES.IDR;
-  const isNegative = value < 0;
-  const absVal = Math.abs(value);
+  const safeVal = typeof value === 'number' && !isNaN(value) ? value : 0;
+  const info = (currencyCode && SUPPORTED_CURRENCIES[currencyCode]) || SUPPORTED_CURRENCIES.IDR;
+  const isNegative = safeVal < 0;
+  const absVal = Math.abs(safeVal);
 
   let formattedNumber = '';
 
@@ -274,7 +275,7 @@ export function formatCurrency(
 
   if (options?.includeSign) {
     if (isNegative) return `-${result}`;
-    if (value > 0) return `+${result}`;
+    if (safeVal > 0) return `+${result}`;
     return result;
   }
 

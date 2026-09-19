@@ -37,16 +37,24 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   const [typeFilter, setTypeFilter] = useState<'all' | TransactionType>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
+  const safeTransactions = useMemo(
+    () => (Array.isArray(transactions) ? transactions : []),
+    [transactions]
+  );
+
   // Available unique categories
   const categories = useMemo(() => {
     const set = new Set<string>();
-    transactions.forEach((t) => set.add(t.category));
+    safeTransactions.forEach((t) => {
+      if (t?.category) set.add(t.category);
+    });
     return Array.from(set);
-  }, [transactions]);
+  }, [safeTransactions]);
 
   // Filtered transactions
   const filtered = useMemo(() => {
-    return transactions.filter((t) => {
+    return safeTransactions.filter((t) => {
+      if (!t) return false;
       // Type match
       if (typeFilter !== 'all' && t.type !== typeFilter) return false;
       // Category match
@@ -54,29 +62,33 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       // Search query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        const descMatch = t.description.toLowerCase().includes(query);
-        const catMatch = t.category.toLowerCase().includes(query);
-        const accMatch = t.account.toLowerCase().includes(query);
-        const amtMatch = t.amount.toString().includes(query);
+        const descMatch = (t.description || '').toLowerCase().includes(query);
+        const catMatch = (t.category || '').toLowerCase().includes(query);
+        const accMatch = (t.account || '').toLowerCase().includes(query);
+        const amtMatch = t.amount != null ? t.amount.toString().includes(query) : false;
         const currMatch = (t.currency || '').toLowerCase().includes(query);
         if (!descMatch && !catMatch && !accMatch && !amtMatch && !currMatch) return false;
       }
       return true;
     });
-  }, [transactions, typeFilter, categoryFilter, searchQuery]);
+  }, [safeTransactions, typeFilter, categoryFilter, searchQuery]);
 
   // Group transactions by date
   const grouped = useMemo(() => {
     const groups: { [date: string]: Transaction[] } = {};
-    const sorted = [...filtered].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    const sorted = [...filtered].sort((a, b) => {
+      const timeA = a?.date ? new Date(a.date).getTime() : 0;
+      const timeB = b?.date ? new Date(b.date).getTime() : 0;
+      return timeB - timeA;
+    });
 
     sorted.forEach((tx) => {
-      if (!groups[tx.date]) {
-        groups[tx.date] = [];
+      if (!tx) return;
+      const dateKey = tx.date || 'Lainnya';
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
       }
-      groups[tx.date].push(tx);
+      groups[dateKey].push(tx);
     });
 
     return groups;
@@ -98,17 +110,17 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       'IsRecurring'
     ];
     const rows = filtered.map((t) => [
-      t.id,
-      t.date,
-      t.type,
-      t.amount,
-      `"${t.description.replace(/"/g, '""')}"`,
-      t.category,
-      t.account,
-      t.currency || baseCurrency,
-      t.originalAmount || t.amount,
-      t.exchangeRate || 1,
-      t.isRecurring ? 'Ya' : 'Tidak',
+      t?.id || '',
+      t?.date || '',
+      t?.type || '',
+      t?.amount != null ? t.amount : 0,
+      `"${(t?.description || '').replace(/"/g, '""')}"`,
+      t?.category || '',
+      t?.account || '',
+      t?.currency || baseCurrency,
+      t?.originalAmount || t?.amount || 0,
+      t?.exchangeRate || 1,
+      t?.isRecurring ? 'Ya' : 'Tidak',
     ]);
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -280,13 +292,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
                 {/* Items in this date group */}
                 <div className="space-y-2">
-                  {items.map((tx) => {
-                    const isInflow = tx.type === 'inflow';
-                    const isForeign = tx.currency && tx.currency !== baseCurrency;
+                  {items.map((tx, idx) => {
+                    const isInflow = tx?.type === 'inflow';
+                    const isForeign = tx?.currency && tx.currency !== baseCurrency;
+                    const txId = tx?.id || `tx-item-${idx}`;
 
                     return (
                       <div
-                        key={tx.id}
+                        key={txId}
                         className="group flex items-center justify-between p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all shadow-sm"
                       >
                         <div className="flex items-center gap-3 min-w-0">
@@ -309,9 +322,9 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate block">
-                                {tx.description}
+                                {tx?.description || 'Tanpa keterangan'}
                               </span>
-                              {tx.isRecurring && (
+                              {tx?.isRecurring && (
                                 <span title="Cashflow berulang rutin" className="text-zinc-400">
                                   <Repeat className="w-3 h-3 text-zinc-500 dark:text-zinc-400 shrink-0" />
                                 </span>
@@ -320,12 +333,12 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
                             {/* Category & Overseas Multi-Currency Badge */}
                             <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                              <span className="text-zinc-700 dark:text-zinc-300 font-medium">{tx.category}</span>
+                              <span className="text-zinc-700 dark:text-zinc-300 font-medium">{tx?.category || 'Umum'}</span>
                               <span>•</span>
-                              <span className="truncate max-w-[120px]">{tx.account}</span>
+                              <span className="truncate max-w-[120px]">{tx?.account || '-'}</span>
 
                               {/* Overseas Currency Badge (Monochrome) */}
-                              {isForeign && tx.originalAmount && (
+                              {isForeign && tx?.originalAmount && (
                                 <>
                                   <span>•</span>
                                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-300 dark:border-zinc-700 font-medium text-[10px]">
@@ -354,19 +367,19 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                                 : 'text-zinc-600 dark:text-zinc-300 font-semibold'
                             }`}
                           >
-                            {formatCurrency(tx.amount, baseCurrency, { includeSign: true })}
+                            {formatCurrency(tx?.amount ?? 0, baseCurrency, { includeSign: true })}
                           </span>
 
                           <div className="flex items-center opacity-70 group-hover:opacity-100 transition-opacity">
                             <button
-                              onClick={() => onEditTransaction(tx)}
+                              onClick={() => tx && onEditTransaction(tx)}
                               className="p-1.5 text-zinc-400 hover:text-zinc-950 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
                               title="Edit"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => onDeleteTransaction(tx.id)}
+                              onClick={() => tx?.id && onDeleteTransaction(tx.id)}
                               className="p-1.5 text-zinc-400 hover:text-zinc-950 dark:hover:text-white rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
                               title="Hapus"
                             >

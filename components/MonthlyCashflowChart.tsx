@@ -27,6 +27,7 @@ export const MonthlyCashflowChart: React.FC<MonthlyCashflowChartProps> = ({
   const monthlyData = useMemo(() => {
     const months: { label: string; key: string; inflow: number; outflow: number; net: number }[] = [];
     const now = new Date();
+    const safeTransactions = Array.isArray(transactions) ? transactions : [];
 
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -44,16 +45,18 @@ export const MonthlyCashflowChart: React.FC<MonthlyCashflowChartProps> = ({
       });
     }
 
-    transactions.forEach((tx) => {
+    safeTransactions.forEach((tx) => {
+      if (!tx || !tx.date) return;
       const txDate = new Date(tx.date);
       if (isNaN(txDate.getTime())) return;
       const key = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}`;
       const target = months.find((m) => m.key === key);
       if (target) {
+        const amt = typeof tx.amount === 'number' && !isNaN(tx.amount) ? tx.amount : 0;
         if (tx.type === 'inflow') {
-          target.inflow += tx.amount;
+          target.inflow += amt;
         } else {
-          target.outflow += tx.amount;
+          target.outflow += amt;
         }
       }
     });
@@ -87,16 +90,20 @@ export const MonthlyCashflowChart: React.FC<MonthlyCashflowChartProps> = ({
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
+    const safeTransactions = Array.isArray(transactions) ? transactions : [];
 
-    transactions.forEach((tx) => {
+    safeTransactions.forEach((tx) => {
+      if (!tx || !tx.date) return;
       const txDate = new Date(tx.date);
+      if (isNaN(txDate.getTime())) return;
       if (txDate.getFullYear() === currentYear && txDate.getMonth() === currentMonth) {
         const day = txDate.getDate();
         const weekIndex = Math.min(3, Math.floor((day - 1) / 7));
+        const amt = typeof tx.amount === 'number' && !isNaN(tx.amount) ? tx.amount : 0;
         if (tx.type === 'inflow') {
-          weeks[weekIndex].inflow += tx.amount;
+          weeks[weekIndex].inflow += amt;
         } else {
-          weeks[weekIndex].outflow += tx.amount;
+          weeks[weekIndex].outflow += amt;
         }
       }
     });
