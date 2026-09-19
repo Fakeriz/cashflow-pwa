@@ -36,6 +36,7 @@ interface AuthModalProps {
   onAuthSuccess: (user: UserProfile) => void;
   onLogoutSuccess: () => void;
   onOpenSupabaseConfig?: () => void;
+  onOpenUpdatePassword?: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -44,6 +45,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   currentUser,
   onAuthSuccess,
   onLogoutSuccess,
+  onOpenUpdatePassword,
 }) => {
   const [tab, setTab] = useState<'login' | 'register' | 'forgot_password'>('login');
   const [email, setEmail] = useState('');
@@ -244,6 +246,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             {/* Action buttons */}
             <div className="flex flex-col gap-2 pt-2">
+              {onOpenUpdatePassword && (
+                <Button
+                  id="btn-open-update-password-from-profile"
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    onClose();
+                    onOpenUpdatePassword();
+                  }}
+                  className="w-full h-11 text-sm font-medium gap-2 rounded-2xl border-zinc-200 dark:border-zinc-800"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>Ganti Kata Sandi Akun</span>
+                </Button>
+              )}
               <Button
                 onClick={handleLogout}
                 disabled={isLoading}

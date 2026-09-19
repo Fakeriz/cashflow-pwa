@@ -486,22 +486,122 @@ export async function signInWithGoogle(): Promise<{ error: string | null }> {
   }
 }
 
-export function subscribeToAuthChanges(callback: (user: UserProfile | null) => void) {
+export async function updateUserPassword(
+  newPassword: string
+): Promise<{ data: any; error: string | null }> {
+  const client = getSupabaseClient();
+  if (!client) {
+    return { data: null, error: 'Supabase belum dikonfigurasi. Silakan masukkan Supabase URL & Anon Key di pengaturan.' };
+  }
+
+  try {
+    const { data, error } = await client.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+
+    return { data, error: null };
+  } catch (err) {
+    return {
+      data: null,
+      error: err instanceof Error ? err.message : 'Gagal memperbarui kata sandi.',
+    };
+  }
+}
+
+/**
+ * Checks if the current browser URL contains Supabase password recovery parameters
+ * (e.g. #access_token=...&type=recovery or ?type=recovery or PKCE recovery callback)
+ */
+export function isPasswordRecoveryUrl(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+
+    // Check hash parameters (#access_token=...&type=recovery)
+    if (hash) {
+      const cleanHash = hash.startsWith('#') ? hash.slice(1) : hash;
+      const hashParams = new URLSearchParams(cleanHash);
+      if (hashParams.get('type') === 'recovery') return true;
+    }
+
+    // Check search parameters (?type=recovery)
+    if (search) {
+      const searchParams = new URLSearchParams(search);
+      if (searchParams.get('type') === 'recovery') return true;
+    }
+
+    // Direct fallback check
+    if (hash.includes('type=recovery') || search.includes('type=recovery')) {
+      return true;
+    }
+  } catch (err) {
+    console.warn('Error reading URL for recovery params:', err);
+  }
+  return false;
+}
+
+/**
+ * Checks if URL hash contains an auth error like expired or invalid recovery link
+ */
+export function getRecoveryErrorFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    const hashParams = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash);
+    const searchParams = new URLSearchParams(search);
+    const errorDesc = hashParams.get('error_description') || searchParams.get('error_description');
+    if (errorDesc) return decodeURIComponent(errorDesc.replace(/\+/g, ' '));
+    const error = hashParams.get('error') || searchParams.get('error');
+    if (error) return error;
+  } catch (err) {
+    console.warn('Error reading recovery error from URL:', err);
+  }
+  return null;
+}
+
+/**
+ * Cleans the recovery hash/query from the browser URL without a full page refresh
+ */
+export function clearRecoveryUrlParams(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState(null, '', cleanUrl);
+  } catch (err) {
+    console.warn('Failed to clean recovery URL hash:', err);
+  }
+}
+
+export function subscribeToAuthChanges(
+  callback: (user: UserProfile | null, event?: string, session?: any) => void,
+  onPasswordRecovery?: () => void
+) {
   if (typeof window === 'undefined') return () => {};
   try {
     const client = getSupabaseClient();
     if (!client || !client.auth) return () => {};
 
-    const { data } = client.auth.onAuthStateChange((_event, session) => {
+    const { data } = client.auth.onAuthStateChange((event, session) => {
       try {
+        if (event === 'PASSWORD_RECOVERY') {
+          if (onPasswordRecovery) {
+            onPasswordRecovery();
+          }
+        }
         if (session?.user) {
-          callback(mapSupabaseUserToProfile(session.user));
+          callback(mapSupabaseUserToProfile(session.user), event, session);
         } else {
-          callback(null);
+          callback(null, event, session);
         }
       } catch (err) {
         console.warn('Error handling auth state change in listener:', err);
-        callback(null);
+        callback(null, event);
       }
     });
 

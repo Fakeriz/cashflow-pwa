@@ -24,7 +24,9 @@ import {
   deleteUserTransaction,
   upsertUserRecurring,
   deleteUserRecurring,
-  signOutUser
+  signOutUser,
+  isPasswordRecoveryUrl,
+  clearRecoveryUrlParams
 } from '@/lib/supabase';
 import { 
   getStoredBaseCurrency, 
@@ -42,6 +44,8 @@ import { AddTransactionModal } from '@/components/AddTransactionModal';
 import { SupabaseSyncModal } from '@/components/SupabaseSyncModal';
 import { CurrencySettingsModal } from '@/components/CurrencySettingsModal';
 import { AuthModal } from '@/components/AuthModal';
+import { UpdatePasswordModal } from '@/components/UpdatePasswordModal';
+import { KeyRound } from 'lucide-react';
 import { OfflineIndicator } from '@/components/OfflineIndicator';
 import { NotificationsModal } from '@/components/NotificationsModal';
 import { MoreMenuModal } from '@/components/MoreMenuModal';
@@ -97,6 +101,8 @@ export default function CashflowApp() {
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [isCurrencyModalOpen, setIsCurrencyModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isUpdatePasswordModalOpen, setIsUpdatePasswordModalOpen] = useState(false);
+  const [isRecoveryFlowActive, setIsRecoveryFlowActive] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
   const [isMoreMenuModalOpen, setIsMoreMenuModalOpen] = useState(false);
   const [isAddWalletModalOpen, setIsAddWalletModalOpen] = useState(false);
@@ -115,9 +121,24 @@ export default function CashflowApp() {
     };
   }, []);
 
+  // Callback when password has been successfully updated
+  const handlePasswordUpdateSuccess = useCallback(() => {
+    setIsUpdatePasswordModalOpen(false);
+    setIsRecoveryFlowActive(false);
+    clearRecoveryUrlParams();
+    setActiveTab('overview'); // Ensure user is directed to Home
+  }, []);
+
   // Check Supabase Auth session on mount and subscribe to changes safely
   useEffect(() => {
     let mounted = true;
+
+    // 1. Detect URL recovery parameters (#access_token=...&type=recovery or ?type=recovery)
+    // before any premature redirect occurs
+    if (isPasswordRecoveryUrl()) {
+      setIsRecoveryFlowActive(true);
+      setIsUpdatePasswordModalOpen(true);
+    }
 
     async function initAuth() {
       try {
@@ -141,11 +162,24 @@ export default function CashflowApp() {
 
     let unsubscribe = () => {};
     try {
-      unsubscribe = subscribeToAuthChanges((user) => {
-        if (mounted) {
-          setCurrentUser(user);
+      // 2. Catch Auth Event 'PASSWORD_RECOVERY' from Supabase Auth listener
+      unsubscribe = subscribeToAuthChanges(
+        (user, event) => {
+          if (mounted) {
+            if (event === 'PASSWORD_RECOVERY') {
+              setIsRecoveryFlowActive(true);
+              setIsUpdatePasswordModalOpen(true);
+            }
+            setCurrentUser(user);
+          }
+        },
+        () => {
+          if (mounted) {
+            setIsRecoveryFlowActive(true);
+            setIsUpdatePasswordModalOpen(true);
+          }
         }
-      });
+      );
     } catch (err) {
       console.warn('Caught subscription setup error:', err);
     }
@@ -498,6 +532,26 @@ export default function CashflowApp() {
           onOpenNotifications={() => setIsNotificationsModalOpen(true)}
         />
 
+        {/* Sticky Password Recovery Notification Banner if recovery mode is active */}
+        {isRecoveryFlowActive && (
+          <div 
+            id="banner-password-recovery"
+            className="bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 px-4 py-2.5 text-xs flex items-center justify-between border-b border-zinc-800 dark:border-zinc-200 sticky top-0 z-30 shadow-md animate-in slide-in-from-top-2 duration-200"
+          >
+            <div className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 shrink-0" />
+              <span>Sesi pemulihan akun aktif. Harap perbarui kata sandi Anda.</span>
+            </div>
+            <button
+              id="btn-open-recovery-from-banner"
+              onClick={() => setIsUpdatePasswordModalOpen(true)}
+              className="underline text-xs font-bold hover:opacity-80 transition ml-3 shrink-0 cursor-pointer"
+            >
+              Ganti Kata Sandi
+            </button>
+          </div>
+        )}
+
         {/* Main Content Viewport */}
         <main className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
           {/* User identification indicator banner on Mobile only if logged in */}
@@ -631,6 +685,15 @@ export default function CashflowApp() {
           setCurrentUser(null);
         }}
         onOpenSupabaseConfig={() => setIsSyncModalOpen(true)}
+        onOpenUpdatePassword={() => setIsUpdatePasswordModalOpen(true)}
+      />
+
+      {/* Update Password Modal ("Ganti Kata Sandi Baru" for Recovery or Settings) */}
+      <UpdatePasswordModal
+        isOpen={isUpdatePasswordModalOpen}
+        onClose={() => setIsUpdatePasswordModalOpen(false)}
+        onSuccess={handlePasswordUpdateSuccess}
+        onOpenForgotPassword={() => setIsAuthModalOpen(true)}
       />
 
       {/* Add / Edit Transaction Modal */}
