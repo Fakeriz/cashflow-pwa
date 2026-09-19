@@ -1,6 +1,6 @@
 {
-  "name": "Cashflow Tracker",
-  "description": "A mobile-first cashflow tracker PWA with predictive forecasting, recurring bills, offline sync, and Supabase integration.",
+  "name": "Paralar",
+  "description": "Aplikasi pelacak keuangan dan arus kas pintar PWA dengan multi-rekening, valas, dan sinkronisasi cloud.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

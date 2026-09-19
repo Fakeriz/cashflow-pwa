@@ -416,6 +416,7 @@ export default function CashflowApp() {
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         currentUser={currentUser}
         onLogout={handleLogout}
+        onOpenMoreMenu={() => setIsMoreMenuModalOpen(true)}
         transactionCount={transactions?.length || 0}
         recurringCount={recurringBills?.length || 0}
         isSupabaseConnected={isSupabaseConnected}

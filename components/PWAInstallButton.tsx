@@ -22,7 +22,7 @@ export const PWAInstallButton: React.FC<{ compact?: boolean }> = ({ compact = fa
         className={`flex items-center gap-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all text-xs font-semibold ${
           compact ? 'px-2.5 py-1.5' : 'px-3.5 py-2'
         }`}
-        title="Pasang aplikasi Cashflow ke Home Screen"
+        title="Pasang aplikasi Paralar ke Home Screen"
       >
         <Download className="w-3.5 h-3.5 shrink-0" />
         <span>Install App</span>

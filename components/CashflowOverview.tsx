@@ -195,16 +195,18 @@ export const CashflowOverview: React.FC<CashflowOverviewProps> = ({
 
         {/* RECENT TRANSACTIONS FOR CURRENT WALLET (Recent · TnG) */}
         {activeWallet && (
-          <AccountRecentTransactions
-            activeWallet={activeWallet}
-            transactions={safeTransactions}
-            onOpenMoveModal={() => setIsMoveModalOpen(true)}
-            onViewAll={() => onNavigateTab('transactions')}
-            onOpenAddModal={onOpenAddModal}
-            onEditTransaction={onEditTransaction}
-            onDeleteTransaction={onDeleteTransaction}
-            hideBalance={hideBalance}
-          />
+          <div className="mt-5 sm:mt-6">
+            <AccountRecentTransactions
+              activeWallet={activeWallet}
+              transactions={safeTransactions}
+              onOpenMoveModal={() => setIsMoveModalOpen(true)}
+              onViewAll={() => onNavigateTab('transactions')}
+              onOpenAddModal={onOpenAddModal}
+              onEditTransaction={onEditTransaction}
+              onDeleteTransaction={onDeleteTransaction}
+              hideBalance={hideBalance}
+            />
+          </div>
         )}
 
         {/* TOGGLEABLE / EXTENDED ANALYTICS & CHARTS SECTION */}

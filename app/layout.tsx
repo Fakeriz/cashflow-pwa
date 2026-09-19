@@ -10,12 +10,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Cashflow Tracker',
-  description: 'A mobile-first cashflow tracker PWA with predictive forecasting, recurring bills, offline sync, and Supabase integration.',
+  title: 'Paralar',
+  description: 'Aplikasi pelacak keuangan dan arus kas pintar PWA dengan multi-rekening, valas, dan sinkronisasi cloud.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Cashflow',
+    title: 'Paralar',
   },
   icons: {
     icon: [
@@ -25,33 +25,35 @@ export const metadata: Metadata = {
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
-    title: 'Cashflow Tracker',
-    description: 'A mobile-first cashflow tracker PWA with predictive forecasting, recurring bills, offline sync, and Supabase integration.',
+    title: 'Paralar',
+    description: 'Aplikasi pelacak keuangan dan arus kas pintar PWA dengan multi-rekening, valas, dan sinkronisasi cloud.',
     type: 'website',
   },
   twitter: {
     card: 'summary',
-    title: 'Cashflow Tracker',
-    description: 'A mobile-first cashflow tracker PWA with predictive forecasting, recurring bills, offline sync, and Supabase integration.',
+    title: 'Paralar',
+    description: 'Aplikasi pelacak keuangan dan arus kas pintar PWA dengan multi-rekening, valas, dan sinkronisasi cloud.',
   },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id" className="dark" suppressHydrationWarning>
+    <html lang="id" className="dark" data-font-size="normal" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                const saved = localStorage.getItem('cashflow_theme');
-                if (saved === 'light') {
+                const savedTheme = localStorage.getItem('cashflow_monochrome_theme') || localStorage.getItem('cashflow_theme');
+                if (savedTheme === 'light') {
                   document.documentElement.classList.remove('dark');
-                } else if (saved === 'dark') {
+                } else if (savedTheme === 'dark') {
                   document.documentElement.classList.add('dark');
                 } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
                   document.documentElement.classList.remove('dark');
                 }
+                const savedFontSize = localStorage.getItem('paralar_font_size') || 'normal';
+                document.documentElement.setAttribute('data-font-size', savedFontSize);
               } catch (e) {}
             `,
           }}

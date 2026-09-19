@@ -483,7 +483,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800">
           <div className="flex items-center gap-2">
             <h3 className="text-lg font-bold text-zinc-950 dark:text-white">
-              {editingTransaction ? 'Edit Transaksi Cashflow' : 'Catat Transaksi Baru'}
+              {editingTransaction ? 'Edit Transaksi' : 'Catat Transaksi Baru'}
             </h3>
           </div>
           <button

@@ -5,9 +5,9 @@ export const dynamic = 'force-static';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: '/',
-    name: 'Cashflow Tracker',
-    short_name: 'Cashflow',
-    description: 'A mobile-first cashflow tracker with predictive forecasting and Supabase sync',
+    name: 'Paralar',
+    short_name: 'Paralar',
+    description: 'Aplikasi pelacak keuangan dan arus kas pintar PWA dengan multi-rekening, valas, dan sinkronisasi cloud',
     start_url: '/',
     scope: '/',
     display: 'standalone',

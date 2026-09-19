@@ -210,7 +210,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
               <div>
                 <h3 className="text-lg font-bold text-zinc-950 dark:text-white">
-                  {currentUser?.fullName || 'Pengguna Cashflow'}
+                  {currentUser?.fullName || 'Pengguna Paralar'}
                 </h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">{currentUser?.email || '-'}</p>
               </div>
@@ -360,7 +360,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
               <div>
                 <h3 className="text-lg font-bold text-zinc-950 dark:text-white">
-                  {tab === 'login' ? 'Masuk ke Cashflow' : 'Daftar Akun Baru'}
+                  {tab === 'login' ? 'Masuk ke Paralar' : 'Daftar Akun Baru'}
                 </h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   {tab === 'login' 
