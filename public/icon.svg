@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#090d16" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+    <linearGradient id="glowInflow" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+    <linearGradient id="glowAcc" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#10b981" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Background rounded squircle with safe margin -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+
+  <!-- Subtle grid lines -->
+  <path d="M96 170 H416 M96 256 H416 M96 342 H416" stroke="#1e293b" stroke-width="2" stroke-dasharray="6 6" />
+
+  <!-- Cashflow Ascending Wave Area -->
+  <path d="M 96 350 Q 180 340, 240 260 T 416 160 L 416 380 L 96 380 Z" fill="url(#glowInflow)" fill-opacity="0.12" />
+
+  <!-- Cashflow Trajectory Path -->
+  <path d="M 96 350 Q 180 340, 240 260 T 416 160" fill="none" stroke="url(#glowInflow)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" filter="url(#shadow)" />
+
+  <!-- Dynamic Indicator Points -->
+  <circle cx="96" cy="350" r="8" fill="#64748b" />
+  <circle cx="240" cy="260" r="10" fill="#38bdf8" stroke="#0f172a" stroke-width="4" />
+  <circle cx="416" cy="160" r="14" fill="#10b981" stroke="#ffffff" stroke-width="4" />
+
+  <!-- Currency / Flow Glyph Symbol in Center Top -->
+  <circle cx="256" cy="130" r="46" fill="#0f172a" stroke="#334155" stroke-width="3" />
+  <path d="M 256 104 V 156 M 242 116 C 242 110, 270 110, 270 123 C 270 137, 242 133, 242 145 C 242 153, 270 153, 270 145" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

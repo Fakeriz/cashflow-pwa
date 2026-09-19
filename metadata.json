@@ -1,0 +1,6 @@
+{
+  "name": "Cashflow Tracker",
+  "description": "A mobile-first cashflow tracker PWA with predictive forecasting, recurring bills, offline sync, and Supabase integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
