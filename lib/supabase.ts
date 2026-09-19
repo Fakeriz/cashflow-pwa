@@ -191,80 +191,66 @@ export const INITIAL_RECURRING: RecurringBill[] = [
   }
 ];
 
+// Default Public Supabase Credentials
+export const DEFAULT_SUPABASE_URL = 'https://rhgfyzqzcyoprtnyikhx.supabase.co';
+export const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_gggCxqbF1fPHM92bAvDhSg_8fG8rL32';
+
 // Helper to get active Supabase credentials
-export function getSupabaseCredentials(): { url: string; key: string; isConfigured: boolean; source: 'env' | 'custom' | 'none' } {
-  if (typeof window === 'undefined') {
-    const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-    return {
-      url: envUrl,
-      key: envKey,
-      isConfigured: !!(envUrl && envKey),
-      source: envUrl ? 'env' : 'none',
-    };
-  }
+export function getSupabaseCredentials(): { url: string; key: string; isConfigured: boolean; source: 'default' | 'env' } {
+  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const localUrl = localStorage.getItem(SUPABASE_URL_KEY);
-  const localKey = localStorage.getItem(SUPABASE_KEY_KEY);
-  if (localUrl && localKey) {
-    return { url: localUrl, key: localKey, isConfigured: true, source: 'custom' };
-  }
+  const url = (envUrl && envUrl.trim()) ? envUrl.trim() : DEFAULT_SUPABASE_URL;
+  const key = (envKey && envKey.trim()) ? envKey.trim() : DEFAULT_SUPABASE_ANON_KEY;
 
-  const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-  if (envUrl && envKey) {
-    return { url: envUrl, key: envKey, isConfigured: true, source: 'env' };
-  }
-
-  return { url: '', key: '', isConfigured: false, source: 'none' };
+  return {
+    url,
+    key,
+    isConfigured: true,
+    source: envUrl ? 'env' : 'default',
+  };
 }
 
-export function saveCustomSupabaseCredentials(url: string, key: string) {
-  if (typeof window !== 'undefined') {
-    if (url && key) {
-      localStorage.setItem(SUPABASE_URL_KEY, url.trim());
-      localStorage.setItem(SUPABASE_KEY_KEY, key.trim());
-      // Reset instance so new credentials are used
-      supabaseClientInstance = null;
-      currentClientKey = '';
-    } else {
-      localStorage.removeItem(SUPABASE_URL_KEY);
-      localStorage.removeItem(SUPABASE_KEY_KEY);
-      supabaseClientInstance = null;
-      currentClientKey = '';
+// Client singleton initialized with default public credentials
+let supabaseInstance: SupabaseClient | null = null;
+
+export function getSupabaseClient(): SupabaseClient {
+  if (!supabaseInstance) {
+    const isBrowser = typeof window !== 'undefined';
+    supabaseInstance = createClient(
+      (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL.trim()) || DEFAULT_SUPABASE_URL,
+      (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.trim()) || DEFAULT_SUPABASE_ANON_KEY,
+      {
+        auth: {
+          persistSession: isBrowser,
+          autoRefreshToken: isBrowser,
+          detectSessionInUrl: isBrowser,
+        },
+      }
+    );
+  }
+  return supabaseInstance;
+}
+
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    const client = getSupabaseClient();
+    const val = (client as any)[prop];
+    if (typeof val === 'function') {
+      return val.bind(client);
     }
-  }
-}
+    return val;
+  },
+});
 
-// Client singleton
-let supabaseClientInstance: SupabaseClient | null = null;
-let currentClientKey = '';
-
-export function getSupabaseClient(): SupabaseClient | null {
-  const creds = getSupabaseCredentials();
-  if (!creds.isConfigured) return null;
-
-  const keyString = `${creds.url}_${creds.key}`;
-  if (supabaseClientInstance && currentClientKey === keyString) {
-    return supabaseClientInstance;
-  }
-
-  try {
-    supabaseClientInstance = createClient(creds.url, creds.key, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-      },
-    });
-    currentClientKey = keyString;
-    return supabaseClientInstance;
-  } catch (err) {
-    console.error('Error creating Supabase client:', err);
-    return null;
-  }
+export function saveCustomSupabaseCredentials(_url: string, _key: string) {
+  // Maintained for backward compatibility, credentials are now hardcoded and connected permanently
 }
 
 export async function testSupabaseConnection(): Promise<{ success: boolean; message: string }> {
+  if (typeof window === 'undefined') {
+    return { success: true, message: 'Server environment active' };
+  }
   const client = getSupabaseClient();
   if (!client) {
     return { success: false, message: 'Supabase credentials not configured' };
@@ -299,6 +285,7 @@ function mapSupabaseUserToProfile(user: SupabaseAuthUser): UserProfile {
 }
 
 export async function getCurrentUser(): Promise<UserProfile | null> {
+  if (typeof window === 'undefined') return null;
   const client = getSupabaseClient();
   if (!client) return null;
   try {
@@ -433,7 +420,28 @@ export async function resetPasswordForEmail(
   }
 }
 
+export async function signInWithGoogle(): Promise<{ error: string | null }> {
+  try {
+    const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+      },
+    });
+    if (error) {
+      return { error: error.message };
+    }
+    return { error: null };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'Gagal masuk dengan Google.',
+    };
+  }
+}
+
 export function subscribeToAuthChanges(callback: (user: UserProfile | null) => void) {
+  if (typeof window === 'undefined') return () => {};
   const client = getSupabaseClient();
   if (!client) return () => {};
 

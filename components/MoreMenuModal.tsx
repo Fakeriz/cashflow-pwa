@@ -212,10 +212,10 @@ export const MoreMenuModal: React.FC<MoreMenuModalProps> = ({
                 </div>
                 <div>
                   <span className="text-xs font-bold text-zinc-900 dark:text-white block">
-                    Sinkronisasi Cloud Supabase
+                    Database Cloud Supabase
                   </span>
                   <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
-                    {isSupabaseConnected ? 'Terhubung & aktif' : 'Atur URL & Anon Key database'}
+                    Terhubung & tersinkronisasi otomatis
                   </span>
                 </div>
               </div>

@@ -63,7 +63,7 @@ export default function CashflowApp() {
   const [recurringBills, setRecurringBills] = useState<RecurringBill[]>(() => getLocalRecurring());
 
   // Supabase connection & sync states
-  const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
+  const [isSupabaseConnected, setIsSupabaseConnected] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Modals

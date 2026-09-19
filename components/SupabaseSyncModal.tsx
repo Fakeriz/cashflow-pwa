@@ -7,21 +7,19 @@ import {
   Check, 
   Copy, 
   RefreshCw, 
-  Key, 
-  Globe, 
   CheckCircle2, 
   AlertCircle,
   FileCode2,
-  ShieldCheck
+  ShieldCheck,
+  Globe
 } from 'lucide-react';
 import { 
   getSupabaseCredentials, 
-  saveCustomSupabaseCredentials, 
   testSupabaseConnection, 
-  SUPABASE_SQL_SCHEMA 
+  SUPABASE_SQL_SCHEMA,
+  DEFAULT_SUPABASE_URL
 } from '@/lib/supabase';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 
 interface SupabaseSyncModalProps {
   isOpen: boolean;
@@ -33,26 +31,20 @@ const SupabaseSyncContent: React.FC<{
   onClose: () => void;
   onSyncTriggered: () => void;
 }> = ({ onClose, onSyncTriggered }) => {
-  const [creds] = useState(() => getSupabaseCredentials());
-  const [url, setUrl] = useState(creds.url);
-  const [anonKey, setAnonKey] = useState(creds.key);
-  const source = creds.source;
+  const creds = getSupabaseCredentials();
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [copiedSchema, setCopiedSchema] = useState(false);
 
-  const handleSaveAndTest = async () => {
+  const handleTestAndSync = async () => {
     setIsTesting(true);
-    setStatusMsg({ text: 'Menguji koneksi ke Supabase...', type: 'info' });
-
-    // Save custom credentials if user modified them
-    saveCustomSupabaseCredentials(url.trim(), anonKey.trim());
+    setStatusMsg({ text: 'Memeriksa konektivitas cloud Supabase...', type: 'info' });
 
     const res = await testSupabaseConnection();
     setIsTesting(false);
 
     if (res.success) {
-      setStatusMsg({ text: res.message, type: 'success' });
+      setStatusMsg({ text: 'Database cloud aktif dan siap digunakan!', type: 'success' });
       onSyncTriggered();
     } else {
       setStatusMsg({ text: res.message, type: 'error' });
@@ -74,8 +66,8 @@ const SupabaseSyncContent: React.FC<{
             <Database className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-zinc-950 dark:text-white">Supabase Cloud Sync</h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">PostgreSQL backend & Auth per pengguna</p>
+            <h3 className="text-base font-bold text-zinc-950 dark:text-white">Supabase Cloud Database</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Penyimpanan cloud terpusat & aman</p>
           </div>
         </div>
         <button
@@ -113,71 +105,62 @@ const SupabaseSyncContent: React.FC<{
         </div>
       )}
 
-      {/* Credentials Form */}
+      {/* Cloud Status Card (Hardcoded, no manual inputs) */}
       <div className="space-y-3 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
         <div className="flex items-center justify-between text-xs">
-          <span className="font-bold text-zinc-900 dark:text-zinc-100">Kredensial API Supabase</span>
-          <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
-            Sumber: <strong className="uppercase text-zinc-950 dark:text-white">{source}</strong>
+          <div className="flex items-center gap-1.5 font-bold text-zinc-900 dark:text-zinc-100">
+            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            <span>Kredensial Cloud Terhubung Permanen</span>
+          </div>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/40">
+            Online
           </span>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Supabase Project URL</span>
-          </label>
-          <Input
-            id="supabase-url-input"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://your-project.supabase.co"
-            className="text-xs"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-            <Key className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Supabase Anon Public Key</span>
-          </label>
-          <Input
-            id="supabase-key-input"
-            type="password"
-            value={anonKey}
-            onChange={(e) => setAnonKey(e.target.value)}
-            placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-            className="text-xs font-mono"
-          />
+        <div className="p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
+              <Globe className="w-3.5 h-3.5" /> Host Endpoint
+            </span>
+            <span className="font-mono text-[11px] text-zinc-800 dark:text-zinc-200 truncate max-w-[220px]">
+              {DEFAULT_SUPABASE_URL.replace('https://', '')}
+            </span>
+          </div>
+          <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800">
+            <span className="text-zinc-500 dark:text-zinc-400">Akses Publik Anon</span>
+            <span className="text-zinc-800 dark:text-zinc-200 font-semibold text-[11px]">
+              Terkonfigurasi Otomatis
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 pt-1">
           <Button
             id="test-supabase-btn"
             size="sm"
-            onClick={handleSaveAndTest}
-            disabled={isTesting || !url || !anonKey}
-            className="w-full text-xs font-bold flex items-center justify-center gap-1.5"
+            onClick={handleTestAndSync}
+            disabled={isTesting}
+            className="w-full text-xs font-bold flex items-center justify-center gap-1.5 h-10 rounded-xl"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isTesting ? 'animate-spin' : ''}`} />
-            <span>{isTesting ? 'Sedang Menguji...' : 'Simpan & Uji Koneksi'}</span>
+            <span>{isTesting ? 'Sedang Memeriksa...' : 'Sinkronkan Data Cloud Sekarang'}</span>
           </Button>
         </div>
       </div>
 
-      {/* 1-Click SQL Schema copy with RLS & user_id */}
+      {/* SQL Schema helper for admin */}
       <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <FileCode2 className="w-4 h-4 text-zinc-900 dark:text-zinc-100" />
-            <span className="text-xs font-bold text-zinc-950 dark:text-white">PostgreSQL Schema & RLS Policies</span>
+            <span className="text-xs font-bold text-zinc-950 dark:text-white">Skema Tabel & RLS</span>
           </div>
           <Button
             id="copy-sql-schema-btn"
             variant="outline"
             size="sm"
             onClick={handleCopySchema}
-            className="h-8 px-2.5 text-xs flex items-center gap-1 font-semibold"
+            className="h-8 px-2.5 text-xs flex items-center gap-1 font-semibold rounded-xl"
           >
             {copiedSchema ? (
               <>
@@ -193,18 +176,12 @@ const SupabaseSyncContent: React.FC<{
           </Button>
         </div>
         <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
-          Jalankan skrip ini di <strong>Supabase SQL Editor</strong> untuk membuat tabel{' '}
-          <code className="bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded font-mono text-[10px]">cashflow_transactions</code> dan{' '}
-          <code className="bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded font-mono text-[10px]">cashflow_recurring</code> lengkap dengan Row Level Security (RLS) terisolasi per <code className="bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded font-mono text-[10px]">user_id</code>.
+          Skema Row Level Security (RLS) memastikan transaksi dan tagihan Anda tersimpan privat untuk masing-masing pengguna.
         </p>
-
-        <pre className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[10px] text-zinc-700 dark:text-zinc-300 overflow-x-auto max-h-24 scrollbar-none font-mono">
-          {SUPABASE_SQL_SCHEMA.slice(0, 320)}...
-        </pre>
       </div>
 
       {/* Close Button */}
-      <Button variant="outline" onClick={onClose} className="w-full text-xs font-semibold">
+      <Button variant="outline" onClick={onClose} className="w-full text-xs font-semibold rounded-2xl h-10">
         Tutup
       </Button>
     </div>

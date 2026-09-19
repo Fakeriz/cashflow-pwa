@@ -155,6 +155,9 @@ export function getExchangeRates(): Record<string, number> {
 
 // Fetch fresh exchange rates in background
 export async function refreshLiveExchangeRates(): Promise<{ success: boolean; date?: string }> {
+  if (typeof window === 'undefined') {
+    return { success: false };
+  }
   try {
     const response = await fetch('https://open.er-api.com/v6/latest/USD');
     if (!response.ok) throw new Error('Network response not ok');

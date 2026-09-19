@@ -182,7 +182,7 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'bg-zinc-100 dark:bg-zinc-900 border-zinc-300 dark:border-zinc-700 text-zinc-950 dark:text-zinc-100'
                 : 'bg-zinc-50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white'
             }`}
-            title="Konfigurasi sinkronisasi cloud Supabase"
+            title="Status sinkronisasi cloud Supabase"
           >
             <Database className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden md:inline">
